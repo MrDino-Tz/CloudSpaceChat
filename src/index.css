@@ -1,6 +1,6 @@
 
 :root {
-  --primary-color: #5F33E1; /* The vibrant purple/blue */
+  --primary-color: #F59B1D; /* Official platform orange */
   --bg-main: #f8f9fa; /* Light gray for chat list */
   --bg-white: #ffffff;
   --text-main: #1a1a1a;
@@ -8,7 +8,7 @@
   --border-color: #e5e7eb;
   --hover-bg: #f3f4f6;
   --msg-incoming: #f3f4f6;
-  --msg-outgoing: #5F33E1;
+  --msg-outgoing: #1a1a1a; /* Black as per previous design */
   --icon-color: #6b7280;
   
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -27,7 +27,7 @@ body {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background-color: #cdd2fc; /* Outer background to frame the app */
+  background-color: #fff4e5; /* Outer background to frame the app, matching orange */
 }
 
 #root {
@@ -83,7 +83,7 @@ body {
 .profile-avatar {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 8px;
   object-fit: cover;
   margin-bottom: 30px;
 }
@@ -190,7 +190,7 @@ body {
 .chat-avatar {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: 8px;
   object-fit: cover;
 }
 
@@ -360,7 +360,7 @@ body {
 .msg-avatar {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: 8px;
   margin: 0 12px;
   object-fit: cover;
 }
@@ -383,7 +383,7 @@ body {
 
 .message-bubble {
   padding: 8px 12px;
-  border-radius: 16px;
+  border-radius: 8px;
   font-size: 14px;
   position: relative;
   min-width: 80px;
@@ -394,13 +394,11 @@ body {
 .message-wrapper.incoming .message-bubble {
   background-color: #f3f4f6;
   color: #1a1a1a;
-  border-bottom-left-radius: 4px;
 }
 
 .message-wrapper.outgoing .message-bubble {
-  background-color: #1a1a1a;
+  background-color: var(--msg-outgoing);
   color: white;
-  border-bottom-right-radius: 4px;
 }
 
 .message-meta {
@@ -424,11 +422,79 @@ body {
 .file-attachment {
   display: flex;
   align-items: center;
-  background-color: var(--bg-white);
+  background-color: rgba(128, 128, 128, 0.1);
   padding: 8px 12px;
   border-radius: 8px;
   margin-bottom: 8px;
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  cursor: pointer;
+}
+
+.message-wrapper.outgoing .file-attachment {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.audio-attachment {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(128, 128, 128, 0.1);
+  padding: 8px 12px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+  min-width: 200px;
+}
+
+.message-wrapper.outgoing .audio-attachment {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.audio-play-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--text-main);
+  color: var(--bg-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.message-wrapper.outgoing .audio-play-btn {
+  background: var(--bg-white);
+  color: var(--msg-outgoing);
+}
+
+.audio-waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-grow: 1;
+  height: 24px;
+}
+
+.waveform-bar {
+  width: 3px;
+  background: #9ca3af;
+  border-radius: 2px;
+  min-height: 4px;
+}
+
+.audio-time {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.audio-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-left: -8px;
+  border: 2px solid var(--bg-white);
 }
 
 .msg-link {
@@ -485,7 +551,7 @@ body {
 
 .link-dialog {
   background: var(--bg-white);
-  border-radius: 16px;
+  border-radius: 8px;
   width: 90%;
   max-width: 420px;
   padding: 24px;
@@ -567,7 +633,7 @@ body {
 .link-dialog-btn {
   flex: 1;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: none;
   font-size: 14px;
   font-weight: 600;
@@ -769,7 +835,7 @@ body {
 .msg-avatar-letter-sm {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: 8px;
   background-color: var(--primary-color);
   color: #fff;
   display: flex;
@@ -787,7 +853,7 @@ body {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 8px;
   font-weight: 700;
   font-size: 20px;
   color: #fff;
@@ -816,7 +882,7 @@ body {
   position: relative;
   width: 96px;
   height: 96px;
-  border-radius: 50%;
+  border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
 }
@@ -830,7 +896,7 @@ body {
 .profile-avatar-letter {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
+  border-radius: 8px;
   background-color: var(--primary-color);
   color: #fff;
   display: flex;
@@ -884,7 +950,7 @@ body {
   display: flex;
   align-items: center;
   background-color: var(--hover-bg);
-  border-radius: 24px;
+  border-radius: 8px;
   padding: 8px 8px 8px 20px;
 }
 
@@ -904,7 +970,7 @@ body {
   left: 0;
   background: var(--bg-white);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   padding: 6px;
   z-index: 100;
@@ -986,7 +1052,7 @@ body {
   color: white;
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1034,7 +1100,7 @@ body {
 .group-avatar-large {
   width: 80px;
   height: 80px;
-  border-radius: 50%;
+  border-radius: 8px;
   object-fit: cover;
   margin-bottom: 16px;
 }
@@ -1098,7 +1164,7 @@ body {
 .member-avatar {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 8px;
   border: 2px solid var(--bg-white);
   margin-left: -8px;
   object-fit: cover;
@@ -1110,7 +1176,7 @@ body {
 .more-members {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 8px;
   background-color: var(--primary-color);
   color: white;
   display: flex;
@@ -1265,7 +1331,7 @@ body {
 
 .file-preview-modal {
   background: var(--bg-white);
-  border-radius: 12px;
+  border-radius: 8px;
   width: 90%;
   max-width: 600px;
   max-height: 90vh;

@@ -28,7 +28,7 @@ function MemberAvatar({ uid }) {
   return (
     <img
       className="member-avatar"
-      src={user?.avatar || `https://ui-avatars.com/api/?name=${name}&background=5F33E1&color=fff`}
+      src={user?.avatar || `https://ui-avatars.com/api/?name=${name}&background=F59B1D&color=fff`}
       alt=""
       title={name}
     />

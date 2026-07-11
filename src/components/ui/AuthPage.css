@@ -241,7 +241,7 @@
 
 .modal-box {
   background: #fff;
-  border-radius: 16px;
+  border-radius: 8px;
   width: 100%;
   max-width: 400px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
@@ -280,7 +280,7 @@
   cursor: pointer;
   color: #9ca3af;
   padding: 4px;
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -131,7 +131,15 @@ function renderContent(text, onLinkClick) {
   });
 }
 
+const CheckTicks = ({ read }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={read ? "#3b82f6" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+    <polyline points="18 6 11 15 7 11" />
+    {read && <polyline points="22 6 15 15 13 13" />}
+  </svg>
+);
+
 function MessageBubble({ msg, isOwn, onPreview, onLinkClick }) {
+  const { profile } = useAuth();
   const [sender, setSender] = useState(null);
   const time = msg.timestamp?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
 
@@ -158,6 +166,23 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick }) {
                 <video key={i} src={att.url} controls className="msg-attachment-video" onClick={() => onPreview?.({ type: "video", url: att.url })} />
               );
             }
+            if (att.type === "audio") {
+              return (
+                <div key={i} className="audio-attachment">
+                  <div className="audio-play-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  </div>
+                  <div className="audio-waveform">
+                    {[...Array(24)].map((_, j) => <div key={j} className="waveform-bar" style={{ height: (20 + Math.random() * 80) + "%" }} />)}
+                  </div>
+                  <div className="audio-time">0:40</div>
+                  {isOwn && profile?.avatar && <img className="audio-avatar" src={profile.avatar} alt="" />}
+                  {isOwn && !profile?.avatar && <div className="audio-avatar" style={{background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'white'}}>{getAvatarFallback(profile?.displayName)}</div>}
+                  {!isOwn && sender?.avatar && <img className="audio-avatar" src={sender.avatar} alt="" />}
+                  {!isOwn && !sender?.avatar && <div className="audio-avatar" style={{background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'white'}}>{getAvatarFallback(sender?.displayName)}</div>}
+                </div>
+              );
+            }
             const ext = att.name?.split(".").pop()?.toLowerCase();
             const previewTypes = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv"];
             const canPreview = previewTypes.includes(ext);
@@ -178,7 +203,7 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick }) {
         </div>
         <div className="message-meta">
           <span>{time}</span>
-          {isOwn && <span className="read-status">{msg.readBy?.length > 1 ? "✓✓" : "✓"}</span>}
+          {isOwn && <CheckTicks read={msg.readBy?.length > 1} />}
         </div>
       </div>
     </div>
