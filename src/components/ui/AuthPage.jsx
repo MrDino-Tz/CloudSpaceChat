@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { signInWithPopup, GoogleAuthProvider, GithubAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -331,9 +332,9 @@ export function AuthPage() {
           {/* Legal */}
           <p className="auth-legal">
             By clicking continue, you agree to our{' '}
-            <a href="#">Terms of Service</a>
+            <Link to="/terms">Terms of Service</Link>
             {' '}and{' '}
-            <a href="#">Privacy Policy</a>.
+            <Link to="/privacy">Privacy Policy</Link>.
           </p>
         </div>
       </div>
