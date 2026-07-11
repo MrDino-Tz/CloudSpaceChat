@@ -1,5 +1,5 @@
 const CLOUD_NAME = "dt2ngt3or";
-const UPLOAD_PRESET = "cloudspacechat_preset";
+const UPLOAD_PRESET = "cloudchat_preset";
 
 export async function uploadToCloudinary(file, options = {}) {
   const formData = new FormData();

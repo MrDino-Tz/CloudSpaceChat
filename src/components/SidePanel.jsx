@@ -136,7 +136,16 @@ export function SidePanel({ conversation, currentUserId, onClose }) {
           <div className="media-grid">
             {media.slice(0, 3).map((item, i) => (
               <div key={i} className="media-item-container">
-                <img className="media-item" src={item.url} alt="" />
+                {item.type === "video" ? (
+                  <>
+                    <img className="media-item" src={item.url?.replace("/upload/", "/upload/w_200,q_auto,f_jpg/")} alt="" />
+                    <div className="media-play-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" fill="white"/></svg>
+                    </div>
+                  </>
+                ) : (
+                  <img className="media-item" src={item.url} alt="" />
+                )}
                 {i === 2 && media.length > 3 && (
                   <div className="media-overlay">+{mediaCount - 3}</div>
                 )}
