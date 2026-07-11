@@ -149,3 +149,42 @@ export async function deduplicatePrivateConversations(userId1, userId2) {
   }
   return dups[0]?.id || null;
 }
+
+/** Delete only for the current user (soft hide) */
+export async function deleteMessageForMe(messageId, userId) {
+  const ref = doc(db, "messages", messageId);
+  const snap = await getDoc(ref);
+  const current = snap.data()?.deletedFor || [];
+  if (!current.includes(userId)) {
+    await updateDoc(ref, { deletedFor: [...current, userId] });
+  }
+}
+
+/** Delete for everyone (hard delete flag) */
+export async function deleteMessageForEveryone(messageId) {
+  await updateDoc(doc(db, "messages", messageId), {
+    isDeleted: true,
+    content: "This message was deleted",
+  });
+}
+
+/** Edit message text */
+export async function editMessage(messageId, newContent) {
+  await updateDoc(doc(db, "messages", messageId), {
+    content: newContent,
+    edited: new Date(),
+  });
+}
+
+/** Toggle star on a message for a user */
+export async function toggleStarMessage(messageId, userId) {
+  const ref = doc(db, "messages", messageId);
+  const snap = await getDoc(ref);
+  const current = snap.data()?.starredBy || [];
+  const isStarred = current.includes(userId);
+  await updateDoc(ref, {
+    starredBy: isStarred ? current.filter((u) => u !== userId) : [...current, userId],
+  });
+  return !isStarred;
+}
+

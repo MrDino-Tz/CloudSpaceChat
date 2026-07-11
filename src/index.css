@@ -454,6 +454,216 @@ html[data-theme="dark"] body {
   color: white;
 }
 
+/* ── Context Menu ── */
+.msg-context-menu {
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  min-width: 200px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: ctx-pop 0.12s ease;
+}
+
+@keyframes ctx-pop {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.msg-context-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s;
+}
+
+.msg-context-item:hover {
+  background: var(--hover-bg);
+}
+
+.msg-context-item.danger {
+  color: #dc2626;
+}
+
+.msg-context-item.danger:hover {
+  background: #fef2f2;
+}
+
+.msg-context-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.msg-context-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 6px;
+}
+
+/* ── Reply Quote (inside bubble) ── */
+.msg-reply-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(0,0,0,0.07);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  max-width: 100%;
+}
+
+.message-wrapper.outgoing .msg-reply-quote {
+  background: rgba(255,255,255,0.12);
+}
+
+.msg-reply-bar {
+  width: 3px;
+  min-height: 28px;
+  background: var(--primary-color);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.msg-reply-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.message-wrapper.outgoing .msg-reply-text {
+  color: rgba(255,255,255,0.7);
+}
+
+/* ── Reply Preview Bar (above input) ── */
+.reply-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--hover-bg);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.reply-preview-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.reply-preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.reply-preview-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reply-preview-cancel {
+  border: none;
+  background: none;
+  color: var(--icon-color);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.reply-preview-cancel:hover {
+  background: var(--border-color);
+}
+
+/* ── Edit Form (inside bubble) ── */
+.msg-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.msg-edit-input {
+  border: 1px solid var(--primary-color);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  outline: none;
+  background: var(--bg-white);
+  color: var(--text-main);
+  width: 100%;
+}
+
+.msg-edit-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.msg-edit-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.msg-edit-btn.save {
+  background: var(--primary-color);
+  color: white;
+}
+
+.msg-edit-btn.cancel {
+  background: var(--hover-bg);
+  color: var(--text-main);
+}
+
+/* ── Misc tags ── */
+.msg-edited-tag {
+  font-size: 11px;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.msg-star-indicator {
+  color: var(--primary-color);
+  font-size: 12px;
+  margin-right: 4px;
+}
+
 .message-meta {
   display: flex;
   align-items: center;
@@ -1279,7 +1489,7 @@ html[data-theme="dark"] body {
 .modal-box {
   background: var(--bg-white);
   color: var(--text-main);
-  border-radius: 16px;
+  border-radius: 12px;
   width: 90%;
   max-width: 440px;
   max-height: 90vh;
@@ -1681,7 +1891,7 @@ html[data-theme="dark"] body {
 /* ── Settings Modal ── */
 .settings-modal {
   background: var(--bg-white);
-  border-radius: 16px;
+  border-radius: 12px;
   width: 94%;
   max-width: 520px;
   max-height: 88vh;
@@ -2024,4 +2234,200 @@ html[data-theme="dark"] body {
   font-size: 13px;
   color: var(--text-secondary);
   font-weight: 500;
+}
+
+/* ── Chat list header (Chats title + New button) ── */
+.chat-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 0;
+  flex-shrink: 0;
+}
+
+.chat-list-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.new-btn-wrapper {
+  position: relative;
+}
+
+.new-chat-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: var(--hover-bg);
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.new-chat-btn:hover {
+  background: var(--border-color);
+}
+
+.new-chat-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.new-chat-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-main);
+  transition: background 0.1s;
+}
+
+.new-chat-option:hover {
+  background: var(--hover-bg);
+}
+
+.new-chat-option svg {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* ── Group Create Modal ── */
+.group-member-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  min-height: 10px;
+}
+
+.group-member-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--hover-bg);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-main);
+  transition: background 0.1s;
+}
+
+.group-member-chip:hover {
+  background: #fecaca;
+}
+
+.group-chip-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.group-chip-letter {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-user-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.group-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.group-user-row:hover {
+  background: var(--hover-bg);
+}
+
+.group-row-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.group-row-letter {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.group-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-row-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.group-row-username {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.group-row-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.group-row-check.checked {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.group-row-check.checked svg {
+  color: #fff;
 }
