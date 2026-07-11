@@ -131,7 +131,7 @@ function renderContent(text, onLinkClick) {
   });
 }
 
-function MessageBubble({ msg, isOwn, onViewImage, onLinkClick }) {
+function MessageBubble({ msg, isOwn, onPreview, onLinkClick }) {
   const [sender, setSender] = useState(null);
   const time = msg.timestamp?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
 
@@ -151,16 +151,19 @@ function MessageBubble({ msg, isOwn, onViewImage, onLinkClick }) {
         <div className="message-bubble">
           {msg.attachments?.map((att, i) => {
             if (att.type === "image") {
-              return <img key={i} src={att.url} alt="" className="msg-attachment-img" onClick={() => onViewImage?.(att.url)} />;
+              return <img key={i} src={att.url} alt="" className="msg-attachment-img" onClick={() => onPreview?.({ type: "image", url: att.url })} />;
             }
             if (att.type === "video") {
               return (
-                <video key={i} src={att.url} controls className="msg-attachment-video" />
+                <video key={i} src={att.url} controls className="msg-attachment-video" onClick={() => onPreview?.({ type: "video", url: att.url })} />
               );
             }
+            const ext = att.name?.split(".").pop()?.toLowerCase();
+            const previewTypes = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv"];
+            const canPreview = previewTypes.includes(ext);
             const badge = getFileBadge(att.name);
             return (
-              <div key={i} className="file-attachment">
+              <div key={i} className={`file-attachment ${canPreview ? "file-previewable" : ""}`} onClick={() => canPreview && onPreview?.({ type: "document", url: att.url, name: att.name, ext })}>
                 <div className="file-icon" style={{ background: badge.bg, color: badge.color }}>
                   {badge.color ? (att.name?.split(".").pop() || "FILE").toUpperCase() : "FILE"}
                 </div>
@@ -178,6 +181,51 @@ function MessageBubble({ msg, isOwn, onViewImage, onLinkClick }) {
           {isOwn && <span className="read-status">{msg.readBy?.length > 1 ? "✓✓" : "✓"}</span>}
         </div>
       </div>
+    </div>
+  );
+}
+
+const DOC_VIEWER = "https://docs.google.com/viewer?embedded=true&url=";
+
+function PreviewModal({ item, onClose }) {
+  if (!item) return null;
+  return (
+    <div className="image-viewer-backdrop" onClick={onClose}>
+      <button className="image-viewer-close" onClick={onClose}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+
+      {item.type === "image" && (
+        <img src={item.url} alt="" className="image-viewer-img" onClick={(e) => e.stopPropagation()} />
+      )}
+
+      {item.type === "video" && (
+        <video src={item.url} controls autoPlay className="image-viewer-img video-viewer" onClick={(e) => e.stopPropagation()} />
+      )}
+
+      {item.type === "document" && (
+        <div className="doc-viewer-wrapper" onClick={(e) => e.stopPropagation()}>
+          <div className="doc-viewer-header">
+            <span className="doc-viewer-name">{item.name}</span>
+            <a className="doc-viewer-download" href={item.url} target="_blank" rel="noopener noreferrer" download={item.name}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </a>
+          </div>
+          <iframe
+            className="doc-viewer-iframe"
+            src={`${DOC_VIEWER}${encodeURIComponent(item.url)}`}
+            title={item.name}
+          />
+          <div className="doc-viewer-fallback">
+            <a href={item.url} target="_blank" rel="noopener noreferrer" className="doc-viewer-fallback-link">
+              Open in new tab →
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -384,7 +432,7 @@ export function ChatPage() {
   const [startingChat, setStartingChat] = useState(false);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
-  const [viewerImage, setViewerImage] = useState(null);
+  const [previewItem, setPreviewItem] = useState(null);
   const [pendingLink, setPendingLink] = useState(null);
   const messagesEnd = useRef(null);
 
@@ -596,7 +644,7 @@ export function ChatPage() {
 
             <div className="messages-container">
               {messages.map((msg) => (
-                msg.isDeleted ? null : <MessageBubble key={msg.id} msg={msg} isOwn={msg.senderId === user.uid} onViewImage={setViewerImage} onLinkClick={setPendingLink} />
+                msg.isDeleted ? null : <MessageBubble key={msg.id} msg={msg} isOwn={msg.senderId === user.uid} onPreview={setPreviewItem} onLinkClick={setPendingLink} />
               ))}
               <div ref={messagesEnd} />
             </div>
@@ -631,15 +679,8 @@ export function ChatPage() {
 
       {showProfile && <ProfileEditModal onClose={() => setShowProfile(false)} />}
 
-      {viewerImage && (
-        <div className="image-viewer-backdrop" onClick={() => setViewerImage(null)}>
-          <button className="image-viewer-close" onClick={() => setViewerImage(null)}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-          <img src={viewerImage} alt="" className="image-viewer-img" onClick={(e) => e.stopPropagation()} />
-        </div>
+      {previewItem && (
+        <PreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
       )}
 
       {pendingLink && <LinkSecurityDialog url={pendingLink} onClose={() => setPendingLink(null)} />}
