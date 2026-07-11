@@ -427,10 +427,201 @@ body {
   border: 1px solid var(--border-color);
 }
 
+.msg-link {
+  color: #22c55e;
+  font-weight: 700;
+  text-decoration: underline;
+  word-break: break-all;
+  cursor: pointer;
+}
+
+.msg-link:hover {
+  color: #16a34a;
+}
+
+/* ── Link Security Dialog ── */
+.link-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.link-dialog {
+  background: var(--bg-white);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 420px;
+  padding: 24px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+}
+
+.link-dialog-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.link-dialog-url {
+  background: var(--hover-bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  word-break: break-all;
+  color: var(--text-color);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.link-dialog-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.link-dialog-info strong {
+  color: var(--text-color);
+}
+
+.link-dialog-safe {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  color: #16a34a;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.link-dialog-tools {
+  margin-bottom: 20px;
+}
+
+.link-dialog-tools-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.link-dialog-tool-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.link-dialog-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.link-dialog-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.link-dialog-btn:hover {
+  opacity: 0.85;
+}
+
+.link-dialog-btn-cancel {
+  background: var(--hover-bg);
+  color: var(--text-color);
+}
+
+.link-dialog-btn-visit {
+  background: #22c55e;
+  color: #fff;
+}
+.msg-attachment-img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  display: block;
+  object-fit: cover;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.msg-attachment-img:hover {
+  filter: brightness(0.92);
+}
+
+/* ── Image Viewer (Lightbox) ── */
+.image-viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+
+.image-viewer-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1110;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.image-viewer-close:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.image-viewer-img {
+  max-width: 92vw;
+  max-height: 92vh;
+  object-fit: contain;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.msg-attachment-video {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  display: block;
+}
+
 .file-icon {
   width: 36px;
   height: 36px;
-  background-color: #ef4444; /* Red for PPT */
+  background-color: #ef4444;
   color: white;
   display: flex;
   align-items: center;
@@ -439,6 +630,20 @@ body {
   font-size: 10px;
   font-weight: bold;
   margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.message-wrapper.outgoing .file-attachment {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.message-wrapper.outgoing .file-attachment .file-name {
+  color: #fff;
+}
+
+.message-wrapper.outgoing .file-attachment .file-size {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* Letter avatars */
@@ -815,6 +1020,23 @@ body {
   gap: 8px;
 }
 
+.media-grid-wa {
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2px;
+}
+
+.media-grid-wa .media-item {
+  height: 70px;
+  border-radius: 0;
+}
+
+.media-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
 .media-item {
   width: 100%;
   height: 80px;
@@ -919,4 +1141,164 @@ body {
 .link-details .link-url {
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+/* ── File Preview Modal (WhatsApp-style) ── */
+.file-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-preview-modal {
+  background: var(--bg-white);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+}
+
+.file-preview-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.file-preview-close:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.file-preview-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  max-height: 55vh;
+  background: #111;
+  overflow: hidden;
+}
+
+.file-preview-media {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.file-preview-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+  color: #fff;
+}
+
+.file-preview-file-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-preview-file-name {
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  word-break: break-all;
+}
+
+.file-preview-file-size {
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.file-preview-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-white);
+}
+
+.file-preview-input-wrapper {
+  flex: 1;
+}
+
+.file-preview-input {
+  width: 100%;
+  border: none;
+  padding: 8px 0;
+  font-size: 14px;
+  outline: none;
+  background: transparent;
+}
+
+.file-preview-send {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary-color);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.file-preview-send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.file-preview-send-progress {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.file-preview-progress-bar {
+  height: 3px;
+  background: var(--border-color);
+}
+
+.file-preview-progress-fill {
+  height: 100%;
+  background: var(--primary-color);
+  transition: width 0.3s ease;
+}
+
+.file-preview-error {
+  padding: 8px 16px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 12px;
+  text-align: center;
 }

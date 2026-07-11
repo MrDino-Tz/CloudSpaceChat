@@ -6,7 +6,7 @@ import { usePresence } from "@/hooks/usePresence";
 import { getAvatarUrl, getAvatarFallback } from "@/lib/avatar";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import { SidePanel } from "@/components/SidePanel";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { FilePreviewModal } from "@/components/FilePreviewModal";
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -19,7 +19,8 @@ function ConversationItem({ conv, active, onClick }) {
 
   const name = conv.type === "group" ? conv.name : otherUser?.displayName || "User";
   const lm = conv.lastMessage || {};
-  const preview = lm.type === "image" ? "📷 Photo" : lm.type === "file" ? `📎 ${lm.attachments?.[0]?.name || "File"}` : lm.content || "No messages yet";
+  const hasLink = lm.content && LINK_RX.test(lm.content);
+  const preview = lm.type === "image" ? "📷 Photo" : lm.type === "video" ? "🎥 Video" : lm.type === "file" ? `📎 ${lm.attachments?.[0]?.name || "File"}` : hasLink ? "🔗 Link" : lm.content || "No messages yet";
   const isOnline = otherUser?.isOnline;
 
   return (
@@ -44,7 +45,40 @@ function ConversationItem({ conv, active, onClick }) {
   );
 }
 
-function MessageBubble({ msg, isOwn }) {
+const FILE_EXT_COLORS = {
+  docx: { bg: "#dbeafe", color: "#2563eb" }, doc: { bg: "#dbeafe", color: "#2563eb" },
+  xls: { bg: "#dcfce7", color: "#16a34a" }, xlsx: { bg: "#dcfce7", color: "#16a34a" },
+  pdf: { bg: "#fee2e2", color: "#dc2626" },
+  ppt: { bg: "#ffedd5", color: "#ea580c" }, pptx: { bg: "#ffedd5", color: "#ea580c" },
+  svg: { bg: "#f3e8ff", color: "#9333ea" },
+  zip: { bg: "#f3f4f6", color: "#6b7280" }, rar: { bg: "#f3f4f6", color: "#6b7280" },
+  txt: { bg: "#f3f4f6", color: "#6b7280" },
+};
+
+function getFileBadge(name) {
+  const ext = name?.split(".").pop()?.toLowerCase();
+  return FILE_EXT_COLORS[ext] || { bg: "#f3f4f6", color: "#6b7280" };
+}
+
+function formatSize(bytes) {
+  if (!bytes) return "";
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
+  return Math.round(bytes / 1024) + " KB";
+}
+
+const LINK_RX = /(https?:\/\/[^\s]+)/g;
+
+function renderContent(text, onLinkClick) {
+  if (!text) return null;
+  const parts = text.split(LINK_RX);
+  return parts.map((part, i) =>
+    LINK_RX.test(part)
+      ? <span key={i} className="msg-link" onClick={() => onLinkClick?.(part)}>{part}</span>
+      : part,
+  );
+}
+
+function MessageBubble({ msg, isOwn, onViewImage, onLinkClick }) {
   const [sender, setSender] = useState(null);
   const time = msg.timestamp?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
 
@@ -62,18 +96,29 @@ function MessageBubble({ msg, isOwn }) {
       <div className="message-content">
         {!isOwn && <div className="message-sender">{sender?.displayName || "User"}</div>}
         <div className="message-bubble">
-          {msg.attachments?.map((att, i) => (
-            att.type === "image"
-              ? <img key={i} src={att.url} alt="" style={{ maxWidth: "100%", borderRadius: 8, marginBottom: 4 }} />
-              : <div key={i} className="file-attachment">
-                  <div className="file-icon">FILE</div>
-                  <div className="file-details">
-                    <div className="file-name">{att.name}</div>
-                    <div className="file-size">{Math.round(att.size / 1024)} KB</div>
-                  </div>
+          {msg.attachments?.map((att, i) => {
+            if (att.type === "image") {
+              return <img key={i} src={att.url} alt="" className="msg-attachment-img" onClick={() => onViewImage?.(att.url)} />;
+            }
+            if (att.type === "video") {
+              return (
+                <video key={i} src={att.url} controls className="msg-attachment-video" />
+              );
+            }
+            const badge = getFileBadge(att.name);
+            return (
+              <div key={i} className="file-attachment">
+                <div className="file-icon" style={{ background: badge.bg, color: badge.color }}>
+                  {badge.color ? (att.name?.split(".").pop() || "FILE").toUpperCase() : "FILE"}
                 </div>
-          ))}
-          {msg.content}
+                <div className="file-details">
+                  <div className="file-name">{att.name}</div>
+                  {att.size && <div className="file-size">{formatSize(att.size)}</div>}
+                </div>
+              </div>
+            );
+          })}
+          {msg.content && !["📷 Photo", "🎥 Video", "📎 File"].includes(msg.content) && <div style={{ marginTop: msg.attachments?.length ? 6 : 0 }}>{renderContent(msg.content, onLinkClick)}</div>}
         </div>
         <div className="message-meta">
           <span>{time}</span>
@@ -84,13 +129,85 @@ function MessageBubble({ msg, isOwn }) {
   );
 }
 
-function MessageInput({ conversationId, senderId }) {
+const SAFE_DOMAINS = new Set([
+  "google.com", "youtube.com", "github.com", "facebook.com",
+  "twitter.com", "x.com", "linkedin.com", "instagram.com",
+  "whatsapp.com", "cloudinary.com", "firebase.google.com",
+]);
+
+function LinkSecurityDialog({ url, onClose }) {
+  let domain = "";
+  let isHttps = false;
+  let isSafe = false;
+  try {
+    const u = new URL(url);
+    domain = u.hostname;
+    isHttps = u.protocol === "https:";
+    isSafe = SAFE_DOMAINS.has(domain) || domain.endsWith(".google.com");
+  } catch { domain = url; }
+
+  const handleVisit = () => {
+    window.open(url, "_blank", "noopener,noreferrer");
+    onClose();
+  };
+
+  return (
+    <div className="link-dialog-backdrop" onClick={onClose}>
+      <div className="link-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="link-dialog-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
+          Link Security Check
+        </div>
+
+        <div className="link-dialog-url">{url}</div>
+
+        {isSafe && (
+          <div className="link-dialog-safe">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            Known safe domain
+          </div>
+        )}
+
+        <div className="link-dialog-info">
+          <strong>Connection:</strong> {isHttps ? "🔒 HTTPS (encrypted)" : "⚠️ HTTP (not encrypted)"}<br />
+          <strong>Domain:</strong> {domain}
+        </div>
+
+        <div className="link-dialog-tools">
+          <div className="link-dialog-tools-label">Check with free tools</div>
+          <a className="link-dialog-tool-item" href={`https://www.virustotal.com/gui/url/${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            VirusTotal
+          </a>
+          <a className="link-dialog-tool-item" href={`https://urlscan.io/search/#${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            URLScan.io
+          </a>
+          <a className="link-dialog-tool-item" href={`https://transparencyreport.google.com/safe-browsing/search?url=${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Google Safe Browsing
+          </a>
+        </div>
+
+        <div className="link-dialog-actions">
+          <button className="link-dialog-btn link-dialog-btn-cancel" onClick={onClose}>Cancel</button>
+          <button className="link-dialog-btn link-dialog-btn-visit" onClick={handleVisit}>Visit link</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MessageInput({ conversationId, senderId, onFileSelect }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState("");
   const fileRef = useRef(null);
   const menuRef = useRef(null);
 
@@ -114,48 +231,24 @@ function MessageInput({ conversationId, senderId }) {
     }
   };
 
-  const handleAttach = (accept, type) => {
+  const handleAttach = (accept, mediaType) => {
     setMenuOpen(false);
     fileRef.current.accept = accept;
-    fileRef.current.dataset.mediaType = type;
+    fileRef.current.dataset.mediaType = mediaType;
     fileRef.current.click();
   };
 
-  const handleFile = async (e) => {
+  const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const mediaType = e.target.dataset.mediaType || "file";
-    setUploading(true);
-    setError("");
-    setProgress(0);
-
-    const interval = setInterval(() => setProgress((p) => Math.min(p + 10, 90)), 300);
-
-    try {
-      const result = await uploadToCloudinary(file);
-      clearInterval(interval);
-      setProgress(100);
-      setTimeout(() => setProgress(0), 500);
-
-      await sendMessage(conversationId, senderId, {
-        content: text.trim() || (mediaType === "image" ? "📷 Photo" : mediaType === "video" ? "🎥 Video" : "📎 File"),
-        type: mediaType,
-        attachments: [{ url: result.secure_url, type: mediaType, name: file.name, size: file.size }],
-      });
-      setText("");
-    } catch (err) {
-      clearInterval(interval);
-      setProgress(0);
-      setError(err.message.includes("Upload preset") ? "Upload preset 'cloudchat_preset' not found — check Cloudinary settings" : err.message);
-      setTimeout(() => setError(""), 4000);
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
+    const previewUrl = URL.createObjectURL(file);
+    onFileSelect({ file, type: mediaType, previewUrl });
+    e.target.value = "";
   };
 
   return (
-    <form className={`input-area ${uploading ? "uploading" : ""}`} onSubmit={handleSend}>
+    <form className="input-area" onSubmit={handleSend}>
       <div className="input-container">
         <div className="attach-wrapper" ref={menuRef}>
           <div className="attach-btn" onClick={() => setMenuOpen(!menuOpen)}>
@@ -187,16 +280,14 @@ function MessageInput({ conversationId, senderId }) {
           )}
         </div>
         <input type="file" ref={fileRef} style={{ display: "none" }} onChange={handleFile} />
-        <input type="text" className="msg-input" placeholder={uploading ? "Uploading..." : "Type a message..."} value={text} onChange={(e) => setText(e.target.value)} disabled={uploading} />
-        {uploading && <div className="upload-progress" style={{ width: `${progress}%` }} />}
-        <button className="send-btn" type="submit" disabled={sending || uploading}>
+        <input type="text" className="msg-input" placeholder="Type a message..." value={text} onChange={(e) => setText(e.target.value)} />
+        <button className="send-btn" type="submit" disabled={sending}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="22" y1="2" x2="11" y2="13" />
             <polygon points="22 2 15 22 11 13 2 9 22 2" />
           </svg>
         </button>
       </div>
-      {error && <div className="upload-error">{error}</div>}
     </form>
   );
 }
@@ -239,6 +330,9 @@ export function ChatPage() {
   const [recipient, setRecipient] = useState(null);
   const [startingChat, setStartingChat] = useState(false);
   const [showSidePanel, setShowSidePanel] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [viewerImage, setViewerImage] = useState(null);
+  const [pendingLink, setPendingLink] = useState(null);
   const messagesEnd = useRef(null);
 
   usePresence(user);
@@ -449,12 +543,23 @@ export function ChatPage() {
 
             <div className="messages-container">
               {messages.map((msg) => (
-                msg.isDeleted ? null : <MessageBubble key={msg.id} msg={msg} isOwn={msg.senderId === user.uid} />
+                msg.isDeleted ? null : <MessageBubble key={msg.id} msg={msg} isOwn={msg.senderId === user.uid} onViewImage={setViewerImage} onLinkClick={setPendingLink} />
               ))}
               <div ref={messagesEnd} />
             </div>
 
-            <MessageInput conversationId={activeConvId} senderId={user.uid} />
+            <MessageInput conversationId={activeConvId} senderId={user.uid} onFileSelect={setPendingFile} />
+            {pendingFile && (
+              <FilePreviewModal
+                data={pendingFile}
+                conversationId={activeConvId}
+                senderId={user.uid}
+                onClose={() => {
+                  URL.revokeObjectURL(pendingFile.previewUrl);
+                  setPendingFile(null);
+                }}
+              />
+            )}
           </>
         ) : (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#8a8d91" }}>
@@ -472,6 +577,19 @@ export function ChatPage() {
       </div>
 
       {showProfile && <ProfileEditModal onClose={() => setShowProfile(false)} />}
+
+      {viewerImage && (
+        <div className="image-viewer-backdrop" onClick={() => setViewerImage(null)}>
+          <button className="image-viewer-close" onClick={() => setViewerImage(null)}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+          <img src={viewerImage} alt="" className="image-viewer-img" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+
+      {pendingLink && <LinkSecurityDialog url={pendingLink} onClose={() => setPendingLink(null)} />}
     </div>
   );
 }

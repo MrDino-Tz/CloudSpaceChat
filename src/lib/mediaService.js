@@ -7,12 +7,16 @@ async function fetchAllMessages(conversationId, max = 100) {
   const q = query(
     collection(db, "messages"),
     where("conversationId", "==", conversationId),
-    orderBy("timestamp", "desc"),
     limit(max),
   );
   const snap = await getDocs(q);
   const result = [];
   snap.forEach((d) => result.push({ id: d.id, ...d.data() }));
+  result.sort((a, b) => {
+    const ta = a.timestamp?.toDate?.() || new Date(0);
+    const tb = b.timestamp?.toDate?.() || new Date(0);
+    return tb - ta;
+  });
   return result;
 }
 

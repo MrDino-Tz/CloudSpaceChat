@@ -51,13 +51,17 @@ export function listenToConversations(userId, callback, onError) {
   const q = query(
     collection(db, "conversations"),
     where("participants", "array-contains", userId),
-    orderBy("updatedAt", "desc"),
   );
   return onSnapshot(q, 
     (snap) => {
       const list = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((c) => !c.isDeleted);
+      list.sort((a, b) => {
+        const ta = a.updatedAt?.toDate?.() || new Date(0);
+        const tb = b.updatedAt?.toDate?.() || new Date(0);
+        return tb - ta;
+      });
       callback(list);
     },
     (error) => {
@@ -103,10 +107,14 @@ export function listenToMessages(conversationId, callback) {
   const q = query(
     collection(db, "messages"),
     where("conversationId", "==", conversationId),
-    orderBy("timestamp", "asc"),
   );
   return onSnapshot(q, (snap) => {
     const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    list.sort((a, b) => {
+      const ta = a.timestamp?.toDate?.() || new Date(0);
+      const tb = b.timestamp?.toDate?.() || new Date(0);
+      return ta - tb;
+    });
     callback(list);
   });
 }

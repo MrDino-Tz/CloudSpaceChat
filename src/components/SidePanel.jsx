@@ -104,6 +104,37 @@ export function SidePanel({ conversation, currentUserId, onClose }) {
         ) : null}
       </div>
 
+      {/* Shared Media */}
+      <div className="panel-section">
+        <div className="section-header">
+          <span className="section-title">Photos and videos</span>
+          {mediaCount > 6 && <span className="see-all">See all</span>}
+        </div>
+        {media.length > 0 ? (
+          <div className="media-grid media-grid-wa">
+            {media.slice(0, 6).map((item, i) => (
+              <div key={i} className="media-item-container">
+                {item.type === "video" ? (
+                  <>
+                    <img className="media-item" src={item.url?.replace("/upload/", "/upload/w_200,q_auto,f_jpg/")} alt="" />
+                    <div className="media-play-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" fill="white"/></svg>
+                    </div>
+                  </>
+                ) : (
+                  <img className="media-item" src={item.url} alt="" />
+                )}
+                {i === 5 && mediaCount > 6 && (
+                  <div className="media-overlay">+{mediaCount - 6}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="media-empty">No media yet</div>
+        )}
+      </div>
+
       {/* Members (group only) */}
       {isGroup && members.length > 0 && (
         <div className="panel-section">
@@ -126,40 +157,11 @@ export function SidePanel({ conversation, currentUserId, onClose }) {
         </div>
       )}
 
-      {/* Shared Media */}
-      {media.length > 0 && (
-        <div className="panel-section">
-          <div className="section-header">
-            <span className="section-title">Photos and videos</span>
-            {mediaCount > 6 && <span className="see-all">See all</span>}
-          </div>
-          <div className="media-grid">
-            {media.slice(0, 3).map((item, i) => (
-              <div key={i} className="media-item-container">
-                {item.type === "video" ? (
-                  <>
-                    <img className="media-item" src={item.url?.replace("/upload/", "/upload/w_200,q_auto,f_jpg/")} alt="" />
-                    <div className="media-play-icon">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" fill="white"/></svg>
-                    </div>
-                  </>
-                ) : (
-                  <img className="media-item" src={item.url} alt="" />
-                )}
-                {i === 2 && media.length > 3 && (
-                  <div className="media-overlay">+{mediaCount - 3}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Shared Files */}
+      {/* Documents */}
       {files.length > 0 && (
         <div className="panel-section">
           <div className="section-header">
-            <span className="section-title">Shared files</span>
+            <span className="section-title">Documents</span>
             <span className="see-all">See all</span>
           </div>
           {files.map((file, i) => {
