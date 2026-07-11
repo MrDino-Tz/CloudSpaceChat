@@ -68,14 +68,67 @@ function formatSize(bytes) {
 
 const LINK_RX = /(https?:\/\/[^\s]+)/g;
 
+const SUSPICIOUS_TLDS = new Set([
+  "tk", "ml", "ga", "cf", "gq", "xyz", "top", "loan", "win",
+  "bid", "date", "men", "trade", "webcam", "review", "download",
+]);
+
+const SHORTENERS = new Set([
+  "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd",
+  "buff.ly", "shorturl.at", "rebrand.ly", "cutt.ly", "tiny.cc",
+]);
+
+const PHISHING_KEYWORDS = ["login", "signin", "verify", "secure", "account", "bank", "paypal"];
+
+function checkLinkSafety(url) {
+  try {
+    const u = new URL(url);
+    const hostname = u.hostname;
+    const isHttps = u.protocol === "https:";
+    const hasAt = url.includes("@");
+    const parts = hostname.replace("www.", "").split(".");
+    const tld = parts[parts.length - 1];
+    const domain = parts.slice(-2).join(".");
+    const name = parts[0];
+
+    const flags = [];
+
+    if (!isHttps) flags.push("no-https");
+    if (hasAt) flags.push("contains-@");
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) flags.push("ip-address");
+    if (SUSPICIOUS_TLDS.has(tld)) flags.push("suspicious-tld");
+    if (SHORTENERS.has(hostname) || SHORTENERS.has(domain)) flags.push("shortener");
+    if (name.length > 30) flags.push("long-domain");
+    if (PHISHING_KEYWORDS.some((kw) => name.includes(kw) || hostname.includes(kw))) flags.push("phishing-keyword");
+    if (SAFE_DOMAINS.has(domain) || domain.endsWith(".google.com")) flags.push("safe-domain");
+    if (flags.length === 0) flags.push("unknown");
+
+    let level = "safe";
+    if (flags.includes("ip-address") || flags.includes("contains-@")) level = "suspicious";
+    else if (flags.includes("no-https") || flags.includes("suspicious-tld") || flags.includes("phishing-keyword")) level = "suspicious";
+    else if (flags.includes("safe-domain") && !flags.includes("no-https")) level = "safe";
+    else level = "unknown";
+
+    return { level, flags };
+  } catch {
+    return { level: "unknown", flags: [] };
+  }
+}
+
 function renderContent(text, onLinkClick) {
   if (!text) return null;
   const parts = text.split(LINK_RX);
-  return parts.map((part, i) =>
-    LINK_RX.test(part)
-      ? <span key={i} className="msg-link" onClick={() => onLinkClick?.(part)}>{part}</span>
-      : part,
-  );
+  return parts.map((part, i) => {
+    if (!LINK_RX.test(part)) return part;
+    const { level } = checkLinkSafety(part);
+    const levelClass = level === "safe" ? "link-safe" : level === "suspicious" ? "link-suspicious" : "link-unknown";
+    return (
+      <span key={i} className="link-badge-wrapper" onClick={() => onLinkClick?.(part)}>
+        <span className={`link-badge-dot ${levelClass}`} />
+        <span className="msg-link">{part}</span>
+      </span>
+    );
+  });
 }
 
 function MessageBubble({ msg, isOwn, onViewImage, onLinkClick }) {
