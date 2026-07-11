@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { listenToConversations, listenToMessages, sendMessage, getConversation } from "@/lib/chatService";
-import { getUserProfile } from "@/lib/userService";
+import { listenToConversations, listenToMessages, sendMessage, getConversation, createPrivateConversation } from "@/lib/chatService";
+import { getUserProfile, searchUsers, getAllUsers } from "@/lib/userService";
 import { usePresence } from "@/hooks/usePresence";
+import { getAvatarUrl, getAvatarFallback } from "@/lib/avatar";
+import { ProfileEditModal } from "@/components/ProfileEditModal";
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -14,16 +16,17 @@ function ConversationItem({ conv, active, onClick }) {
   }, [otherUid]);
 
   const name = conv.type === "group" ? conv.name : otherUser?.displayName || "User";
-  const avatar = conv.type === "group"
-    ? conv.avatar
-    : otherUser?.avatar || `https://ui-avatars.com/api/?name=${name}&background=5F33E1&color=fff`;
   const preview = conv.lastMessage?.content || "No messages yet";
   const isOnline = otherUser?.isOnline;
 
   return (
     <div className={`chat-item ${active ? "active" : ""}`} onClick={onClick}>
       <div className="chat-avatar-container">
-        <img className="chat-avatar" src={avatar} alt="" />
+        {otherUser?.avatar ? (
+          <img className="chat-avatar" src={getAvatarUrl(otherUser)} alt="" />
+        ) : (
+          <div className="chat-avatar chat-avatar-letter">{getAvatarFallback(name)}</div>
+        )}
         <div className={`status-dot ${isOnline ? "status-online" : "status-offline"}`} />
       </div>
       <div className="chat-info">
@@ -44,7 +47,7 @@ function MessageBubble({ msg, isOwn }) {
   return (
     <div className={`message-wrapper ${isOwn ? "outgoing" : "incoming"}`}>
       {!isOwn && (
-        <img className="msg-avatar" src={`https://ui-avatars.com/api/?name=${msg.senderId}&background=5F33E1&color=fff`} alt="" />
+        <div className="msg-avatar msg-avatar-letter-sm">{getAvatarFallback(msg.senderId)}</div>
       )}
       <div className="message-content">
         {!isOwn && <div className="message-sender">User</div>}
@@ -101,51 +104,143 @@ function MessageInput({ conversationId, senderId }) {
   );
 }
 
+function UserSearchResult({ foundUser, onStartChat }) {
+  return (
+    <div className="chat-item" onClick={() => onStartChat(foundUser)}>
+      <div className="chat-avatar-container">
+        {foundUser.avatar ? (
+          <img className="chat-avatar" src={getAvatarUrl(foundUser)} alt="" />
+        ) : (
+          <div className="chat-avatar chat-avatar-letter">{getAvatarFallback(foundUser.displayName)}</div>
+        )}
+        <div className={`status-dot ${foundUser.isOnline ? "status-online" : "status-offline"}`} />
+      </div>
+      <div className="chat-info">
+        <div className="chat-header-row">
+          <span className="chat-name">{foundUser.displayName}</span>
+        </div>
+        <div className="chat-preview-row">
+          <span className="chat-preview">@{foundUser.username}{foundUser.bio ? ` \u2022 ${foundUser.bio}` : ""}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ChatPage() {
   const { user, profile, logout } = useAuth();
+  const [view, setView] = useState("chats");
+  const [showProfile, setShowProfile] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId] = useState(null);
   const [activeConv, setActiveConv] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [foundUsers, setFoundUsers] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [recipient, setRecipient] = useState(null);
+  const [startingChat, setStartingChat] = useState(false);
   const messagesEnd = useRef(null);
 
   usePresence(user);
 
   useEffect(() => {
     if (!user) return;
-    const unsub = listenToConversations(user.uid, setConversations);
+    const unsub = listenToConversations(
+      user.uid,
+      setConversations,
+      (err) => setActionError("Chat list error: " + err.message),
+    );
     return unsub;
   }, [user]);
 
   useEffect(() => {
     if (!activeConvId) return;
-    getConversation(activeConvId).then(setActiveConv);
+    setRecipient(null);
+    getConversation(activeConvId).then((conv) => {
+      setActiveConv(conv);
+      if (conv?.type === "private") {
+        const otherUid = conv.participants.find((p) => p !== user.uid);
+        if (otherUid) getUserProfile(otherUid).then(setRecipient);
+      }
+    });
     const unsub = listenToMessages(activeConvId, setMessages);
     return unsub;
-  }, [activeConvId]);
+  }, [activeConvId, user.uid]);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (view !== "find-people") {
+      setFoundUsers([]);
+      return;
+    }
+    setSearching(true);
+    setActionError("");
+    const timer = setTimeout(async () => {
+      try {
+        const results = searchTerm.trim()
+          ? await searchUsers(searchTerm, user.uid)
+          : await getAllUsers(user.uid);
+        setFoundUsers(results);
+      } catch (err) {
+        setActionError("Failed to load users: " + (err.message || "Check Firestore rules"));
+      }
+      setSearching(false);
+    }, searchTerm.trim() ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [searchTerm, view, user.uid]);
+
+  const startChatWithUser = useCallback(async (foundUser) => {
+    if (startingChat) return;
+    setStartingChat(true);
+    setActionError("");
+    try {
+      const convId = await createPrivateConversation(user.uid, foundUser.uid);
+      setActiveConvId(convId);
+      setView("chats");
+      setSearchTerm("");
+    } catch (err) {
+      console.error("Failed to create conversation:", err);
+      setActionError(err.message || "Failed to start chat. Check Firestore rules.");
+    } finally {
+      setStartingChat(false);
+    }
+  }, [user.uid, startingChat]);
+
   const convName = activeConv?.type === "group"
     ? activeConv.name
-    : conversations.find((c) => c.id === activeConvId)
-        ?.participants?.find((p) => p !== user.uid) || "Loading...";
+    : recipient?.displayName || "Loading...";
+
+  const avatarName = profile?.displayName || user?.email || "U";
 
   return (
     <div className="app-window">
       <div className="sidebar">
-        <img
-          src={profile?.avatar || `https://ui-avatars.com/api/?name=${profile?.displayName || user?.email}&background=5F33E1&color=fff`}
-          alt="avatar"
-          className="profile-avatar"
-        />
-        <div className="nav-item active">
+        <div className="sidebar-avatar-wrapper" onClick={() => setShowProfile(true)} title="Edit profile">
+          {profile?.avatar ? (
+            <img src={getAvatarUrl(profile)} alt="avatar" className="profile-avatar" />
+          ) : (
+            <div className="profile-avatar profile-avatar-letter-lg">{getAvatarFallback(avatarName)}</div>
+          )}
+        </div>
+        <div className={`nav-item ${view === "chats" ? "active" : ""}`} onClick={() => setView("chats")}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
           <span>Chats</span>
+        </div>
+        <div className={`nav-item ${view === "find-people" ? "active" : ""}`} onClick={() => setView("find-people")}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            <line x1="8" y1="11" x2="14" y2="11" />
+            <line x1="11" y1="8" x2="11" y2="14" />
+          </svg>
+          <span>Find People</span>
         </div>
         <div className="spacer" />
         <div className="nav-item" onClick={logout} title="Sign out">
@@ -161,7 +256,13 @@ export function ChatPage() {
       <div className="chat-list-panel">
         <div className="search-container">
           <div className="search-input-wrapper">
-            <input type="text" className="search-input" placeholder="Search or start a new chat" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder={view === "find-people" ? "Search by name or @username..." : "Search chats..."}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -169,10 +270,39 @@ export function ChatPage() {
           </div>
         </div>
 
+        {actionError && (
+          <div style={{ padding: "8px 16px", background: "#fef2f2", color: "#dc2626", fontSize: 13, borderBottom: "1px solid #fecaca" }}>
+            {actionError}
+          </div>
+        )}
         <div className="chat-list">
-          {conversations.map((conv) => (
-            <ConversationItem key={conv.id} conv={conv} active={conv.id === activeConvId} onClick={() => setActiveConvId(conv.id)} />
-          ))}
+          {view === "chats" ? (
+            conversations.length === 0 ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "#8a8d91", fontSize: 14 }}>
+                No conversations yet. Use <strong>Find People</strong> to start one.
+              </div>
+            ) : (
+              conversations.map((conv) => (
+                <ConversationItem key={conv.id} conv={conv} active={conv.id === activeConvId} onClick={() => setActiveConvId(conv.id)} />
+              ))
+            )
+          ) : searching ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#8a8d91", fontSize: 14 }}>
+              Searching...
+            </div>
+          ) : foundUsers.length === 0 && searchTerm.trim() ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#8a8d91", fontSize: 14 }}>
+              No users found matching "{searchTerm}"
+            </div>
+          ) : foundUsers.length === 0 ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#8a8d91", fontSize: 14 }}>
+              No users found
+            </div>
+          ) : (
+            foundUsers.map((u) => (
+              <UserSearchResult key={u.uid} foundUser={u} onStartChat={startChatWithUser} />
+            ))
+          )}
         </div>
       </div>
 
@@ -180,8 +310,35 @@ export function ChatPage() {
         {activeConvId ? (
           <>
             <div className="chat-header">
-              <div className="chat-header-info">
-                <div className="chat-title">{convName}</div>
+              <div className="chat-header-info" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {recipient ? (
+                  <div className="chat-avatar-container" style={{ margin: 0 }}>
+                    {recipient.avatar ? (
+                      <img className="chat-avatar" src={getAvatarUrl(recipient)} alt="" style={{ width: 40, height: 40 }} />
+                    ) : (
+                      <div className="chat-avatar chat-avatar-letter" style={{ width: 40, height: 40, fontSize: 16 }}>
+                        {getAvatarFallback(recipient.displayName)}
+                      </div>
+                    )}
+                    <div className={`status-dot ${recipient.isOnline ? "status-online" : "status-offline"}`} />
+                  </div>
+                ) : activeConv?.type === "group" && activeConv.avatar ? (
+                  <img className="chat-avatar" src={activeConv.avatar} alt="" style={{ width: 40, height: 40 }} />
+                ) : activeConv?.type === "group" ? (
+                  <div className="chat-avatar chat-avatar-letter" style={{ width: 40, height: 40, fontSize: 16 }}>
+                    {getAvatarFallback(activeConv.name)}
+                  </div>
+                ) : null}
+                <div>
+                  <div className="chat-title">{convName}</div>
+                  <div className="chat-subtitle">
+                    {activeConv?.type === "group"
+                      ? `${activeConv.participants?.length || 0} members`
+                      : recipient
+                        ? recipient.isOnline ? "online" : "offline"
+                        : ""}
+                  </div>
+                </div>
               </div>
               <div className="chat-actions">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -207,6 +364,8 @@ export function ChatPage() {
           </div>
         )}
       </div>
+
+      {showProfile && <ProfileEditModal onClose={() => setShowProfile(false)} />}
     </div>
   );
 }

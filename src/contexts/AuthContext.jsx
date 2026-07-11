@@ -13,8 +13,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const p = await createUserProfile(firebaseUser);
-        setProfile(p);
+        try {
+          const p = await createUserProfile(firebaseUser);
+          setProfile(p);
+        } catch (err) {
+          console.warn("Firestore profile creation failed (rules not set up yet?):", err);
+          setProfile(null);
+        }
       } else {
         setProfile(null);
       }
@@ -30,7 +35,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, logout }}>
+    <AuthContext.Provider value={{ user, profile, setProfile, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

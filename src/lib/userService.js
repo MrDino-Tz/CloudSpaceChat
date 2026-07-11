@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, query, where, serverTimestamp, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export async function createUserProfile(user) {
@@ -59,4 +59,58 @@ export async function setUserOnline(uid) {
 
 export async function setUserOffline(uid) {
   await updateDoc(doc(db, "users", uid), { isOnline: false, lastSeen: serverTimestamp() });
+}
+
+export async function getAllUsers(currentUid, maxResults = 50) {
+  const q = query(collection(db, "users"), limit(maxResults));
+  const snap = await getDocs(q);
+  const results = [];
+  snap.forEach((d) => {
+    const data = d.data();
+    if (data.uid !== currentUid) results.push({ ...data, id: d.id });
+  });
+  return results;
+}
+
+export async function searchUsers(searchTerm, currentUid, maxResults = 20) {
+  if (!searchTerm.trim()) return [];
+
+  const term = searchTerm.toLowerCase();
+  const nameQuery = query(
+    collection(db, "users"),
+    where("displayName", ">=", term),
+    where("displayName", "<=", term + "\uf8ff"),
+    limit(maxResults),
+  );
+
+  const usernameQuery = query(
+    collection(db, "users"),
+    where("username", ">=", term),
+    where("username", "<=", term + "\uf8ff"),
+    limit(maxResults),
+  );
+
+  const [nameSnap, usernameSnap] = await Promise.allSettled([
+    getDocs(nameQuery),
+    getDocs(usernameQuery),
+  ]);
+
+  const seen = new Set();
+  const results = [];
+
+  const addResults = (snap) => {
+    if (snap.status !== "fulfilled") return;
+    snap.value.forEach((d) => {
+      const data = d.data();
+      if (data.uid !== currentUid && !seen.has(data.uid)) {
+        seen.add(data.uid);
+        results.push({ ...data, id: d.id });
+      }
+    });
+  };
+
+  addResults(nameSnap);
+  addResults(usernameSnap);
+
+  return results.slice(0, maxResults);
 }

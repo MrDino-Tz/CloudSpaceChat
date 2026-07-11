@@ -8,14 +8,8 @@ import { db } from "@/lib/firebase";
 // ─── Conversations ──────────────────────────────────────────────────────────
 
 export async function createPrivateConversation(userId1, userId2) {
-  const q = query(
-    collection(db, "conversations"),
-    where("type", "==", "private"),
-    where("participants", "array-contains", userId1),
-  );
-  const snap = await getDocs(q);
-  const existing = snap.docs.find((d) => d.data().participants.includes(userId2));
-  if (existing) return existing.id;
+  const existing = await deduplicatePrivateConversations(userId1, userId2);
+  if (existing) return existing;
 
   const ref = await addDoc(collection(db, "conversations"), {
     type: "private",
@@ -53,16 +47,22 @@ export async function createGroupConversation(data) {
   return ref.id;
 }
 
-export function listenToConversations(userId, callback) {
+export function listenToConversations(userId, callback, onError) {
   const q = query(
     collection(db, "conversations"),
     where("participants", "array-contains", userId),
     orderBy("updatedAt", "desc"),
   );
-  return onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(list);
-  });
+  return onSnapshot(q, 
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(list);
+    },
+    (error) => {
+      console.warn("listenToConversations error:", error);
+      onError?.(error);
+    },
+  );
 }
 
 export async function getConversation(id) {
@@ -118,4 +118,24 @@ export async function deleteMessage(messageId, userId) {
     isDeleted: true,
     deletedFor: [userId],
   });
+}
+
+export async function deduplicatePrivateConversations(userId1, userId2) {
+  const q = query(
+    collection(db, "conversations"),
+    where("participants", "array-contains", userId1),
+  );
+  const snap = await getDocs(q);
+  const dups = snap.docs.filter(
+    (d) => d.data().type === "private" && d.data().participants.includes(userId2),
+  );
+  if (dups.length > 1) {
+    dups.sort((a, b) => (b.data().createdAt?.toMillis?.() || 0) - (a.data().createdAt?.toMillis?.() || 0));
+    const keep = dups[0];
+    for (const d of dups.slice(1)) {
+      await updateDoc(doc(db, "conversations", d.id), { isDeleted: true });
+    }
+    return keep.id;
+  }
+  return dups[0]?.id || null;
 }
