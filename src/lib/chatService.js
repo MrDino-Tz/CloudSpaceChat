@@ -92,7 +92,7 @@ export async function sendMessage(conversationId, senderId, { content, type = "t
   });
 
   await updateDoc(doc(db, "conversations", conversationId), {
-    lastMessage: { content, senderId, timestamp: serverTimestamp(), type },
+    lastMessage: { content, senderId, timestamp: serverTimestamp(), type, attachments },
     updatedAt: serverTimestamp(),
   });
 

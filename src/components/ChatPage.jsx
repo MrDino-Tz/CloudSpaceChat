@@ -5,6 +5,8 @@ import { getUserProfile, searchUsers, getAllUsers } from "@/lib/userService";
 import { usePresence } from "@/hooks/usePresence";
 import { getAvatarUrl, getAvatarFallback } from "@/lib/avatar";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
+import { SidePanel } from "@/components/SidePanel";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -16,7 +18,8 @@ function ConversationItem({ conv, active, onClick }) {
   }, [otherUid]);
 
   const name = conv.type === "group" ? conv.name : otherUser?.displayName || "User";
-  const preview = conv.lastMessage?.content || "No messages yet";
+  const lm = conv.lastMessage || {};
+  const preview = lm.type === "image" ? "📷 Photo" : lm.type === "file" ? `📎 ${lm.attachments?.[0]?.name || "File"}` : lm.content || "No messages yet";
   const isOnline = otherUser?.isOnline;
 
   return (
@@ -84,6 +87,8 @@ function MessageBubble({ msg, isOwn }) {
 function MessageInput({ conversationId, senderId }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -99,16 +104,41 @@ function MessageInput({ conversationId, senderId }) {
     }
   };
 
+  const handleAttach = () => fileRef.current?.click();
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const result = await uploadToCloudinary(file);
+      const isImage = file.type.startsWith("image/");
+      const attType = isImage ? "image" : "file";
+      await sendMessage(conversationId, senderId, {
+        content: text.trim() || (isImage ? "📷 Photo" : "📎 File"),
+        type: attType,
+        attachments: [{ url: result.secure_url, type: attType, name: file.name, size: file.size }],
+      });
+      setText("");
+    } catch (err) {
+      console.error("Failed to upload file:", err);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
   return (
-    <form className="input-area" onSubmit={handleSend}>
+    <form className={`input-area ${uploading ? "uploading" : ""}`} onSubmit={handleSend}>
       <div className="input-container">
-        <div className="attach-btn">
+        <div className="attach-btn" onClick={handleAttach}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
           </svg>
         </div>
-        <input type="text" className="msg-input" placeholder="Type a message..." value={text} onChange={(e) => setText(e.target.value)} />
-        <button className="send-btn" type="submit">
+        <input type="file" ref={fileRef} style={{ display: "none" }} onChange={handleFile} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
+        <input type="text" className="msg-input" placeholder={uploading ? "Uploading..." : "Type a message..."} value={text} onChange={(e) => setText(e.target.value)} disabled={uploading} />
+        <button className="send-btn" type="submit" disabled={sending || uploading}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="22" y1="2" x2="11" y2="13" />
             <polygon points="22 2 15 22 11 13 2 9 22 2" />
@@ -381,57 +411,12 @@ export function ChatPage() {
         )}
       </div>
 
-      <div className={`right-panel ${!showSidePanel || !recipient ? "hidden" : ""}`}>
-        <div className="right-panel-inner">
-          {recipient && (
-            <>
-              <div className="group-info">
-                {recipient.avatar ? (
-                  <img className="group-avatar-large" src={recipient.avatar} alt="" />
-                ) : (
-                  <div className="group-avatar-large" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "var(--primary-color)", color: "#fff", fontSize: 32, fontWeight: 700 }}>
-                    {getAvatarFallback(recipient.displayName)}
-                  </div>
-                )}
-                <div className="group-name">{recipient.displayName}</div>
-                <div className="group-members">@{recipient.username || "user"}</div>
-                {recipient.bio && <div className="group-desc">{recipient.bio}</div>}
-                {recipient.status && <div className="group-desc" style={{ fontStyle: "italic", fontSize: 12 }}>"{recipient.status}"</div>}
-              </div>
-
-              <div className="panel-section">
-                <div className="file-list-item">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--icon-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 12 }}>
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <polyline points="22,6 12,13 2,6" />
-                  </svg>
-                  <div className="file-details">
-                    <div className="file-name">{recipient.email || "No email"}</div>
-                    <div className="file-size">Email</div>
-                  </div>
-                </div>
-                {recipient.phoneNumber && (
-                  <div className="file-list-item">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--icon-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 12 }}>
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                    </svg>
-                    <div className="file-details">
-                      <div className="file-name">{recipient.phoneNumber}</div>
-                      <div className="file-size">Phone</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="panel-section">
-                <div className="section-header">
-                  <span className="section-title">Shared Media</span>
-                  <span className="see-all" onClick={() => setShowSidePanel(false)}>Close</span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+      <div className={`right-panel ${!showSidePanel ? "hidden" : ""}`}>
+        <SidePanel
+          conversation={activeConv}
+          currentUserId={user?.uid}
+          onClose={() => setShowSidePanel(false)}
+        />
       </div>
 
       {showProfile && <ProfileEditModal onClose={() => setShowProfile(false)} />}
