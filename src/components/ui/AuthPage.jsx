@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { signInWithPopup, GoogleAuthProvider, GithubAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 import './AuthPage.css';
 
 // ─── Particle Canvas ────────────────────────────────────────────────────────
@@ -145,19 +148,29 @@ const XIcon = (props) => (
 
 // ─── Credentials Modal ────────────────────────────────────────────────────────
 function CredsModal({ onClose }) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [isRegister, setIsRegister] = useState(false);
+  const [error, setError] = useState('');
 
   const handleBackdrop = (e) => {
     if (e.target === e.currentTarget) onClose();
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Auth logic goes here
-    console.log('Login:', username, password);
-    onClose();
+    setError('');
+    try {
+      if (isRegister) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      onClose();
+    } catch (err) {
+      setError(err.message.replace('Firebase: ', ''));
+    }
   };
 
   return (
@@ -174,19 +187,21 @@ function CredsModal({ onClose }) {
         </div>
 
         <div className="modal-body">
-          <h2 className="modal-heading">Sign in with credentials</h2>
-          <p className="modal-sub">Enter your username and password to continue.</p>
+          <h2 className="modal-heading">{isRegister ? 'Create account' : 'Sign in with credentials'}</h2>
+          <p className="modal-sub">Enter your email and password to continue.</p>
+
+          {error && <p className="form-error">{error}</p>}
 
           <form className="creds-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label" htmlFor="username">Username</label>
+              <label className="form-label" htmlFor="email">Email</label>
               <input
-                id="username"
-                type="text"
+                id="email"
+                type="email"
                 className="form-input"
-                placeholder="e.g. john_doe"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 autoFocus
               />
             </div>
@@ -214,9 +229,13 @@ function CredsModal({ onClose }) {
             </div>
 
             <button type="submit" className="auth-btn modal-submit-btn">
-              Sign In
+              {isRegister ? 'Create Account' : 'Sign In'}
             </button>
           </form>
+
+          <button className="auth-creds-link" type="button" onClick={() => { setIsRegister(!isRegister); setError(''); }} style={{ marginTop: 12 }}>
+            {isRegister ? 'Already have an account? Sign in' : "Don't have an account? Register"}
+          </button>
         </div>
       </div>
     </div>
@@ -226,6 +245,29 @@ function CredsModal({ onClose }) {
 // ─── Main Auth Page ───────────────────────────────────────────────────────────
 export function AuthPage() {
   const [showModal, setShowModal] = useState(false);
+  const [error, setError] = useState('');
+
+  const signInWithGoogle = async () => {
+    try {
+      setError('');
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (err) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError(err.message.replace('Firebase: ', ''));
+      }
+    }
+  };
+
+  const signInWithGithub = async () => {
+    try {
+      setError('');
+      await signInWithPopup(auth, new GithubAuthProvider());
+    } catch (err) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError(err.message.replace('Firebase: ', ''));
+      }
+    }
+  };
 
   return (
     <div className="auth-root">
@@ -256,13 +298,15 @@ export function AuthPage() {
             <p>login or create your CloudSpace account.</p>
           </div>
 
+          {error && <p className="form-error">{error}</p>}
+
           {/* OAuth Buttons */}
           <div className="auth-buttons">
-            <button className="auth-btn" type="button">
+            <button className="auth-btn" type="button" onClick={signInWithGoogle}>
               <GoogleIcon style={{ width: 16, height: 16 }} />
               Continue with Google
             </button>
-            <button className="auth-btn" type="button">
+            <button className="auth-btn" type="button" onClick={signInWithGithub}>
               <GithubIcon style={{ width: 16, height: 16 }} />
               Continue with GitHub
             </button>

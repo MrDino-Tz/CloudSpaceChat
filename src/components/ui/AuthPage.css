@@ -376,3 +376,13 @@
 .modal-submit-btn {
   margin-top: 8px;
 }
+
+.form-error {
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
