@@ -55,7 +55,9 @@ export function listenToConversations(userId, callback, onError) {
   );
   return onSnapshot(q, 
     (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((c) => !c.isDeleted);
       callback(list);
     },
     (error) => {

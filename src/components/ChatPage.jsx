@@ -42,15 +42,22 @@ function ConversationItem({ conv, active, onClick }) {
 }
 
 function MessageBubble({ msg, isOwn }) {
+  const [sender, setSender] = useState(null);
   const time = msg.timestamp?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
+
+  useEffect(() => {
+    if (!isOwn) getUserProfile(msg.senderId).then(setSender);
+  }, [msg.senderId, isOwn]);
 
   return (
     <div className={`message-wrapper ${isOwn ? "outgoing" : "incoming"}`}>
       {!isOwn && (
-        <div className="msg-avatar msg-avatar-letter-sm">{getAvatarFallback(msg.senderId)}</div>
+        sender?.avatar
+          ? <img className="msg-avatar" src={sender.avatar} alt="" style={{ objectFit: "cover" }} />
+          : <div className="msg-avatar msg-avatar-letter-sm">{getAvatarFallback(sender?.displayName || msg.senderId)}</div>
       )}
       <div className="message-content">
-        {!isOwn && <div className="message-sender">User</div>}
+        {!isOwn && <div className="message-sender">{sender?.displayName || "User"}</div>}
         <div className="message-bubble">
           {msg.attachments?.map((att, i) => (
             att.type === "image"
@@ -76,12 +83,20 @@ function MessageBubble({ msg, isOwn }) {
 
 function MessageInput({ conversationId, senderId }) {
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!text.trim()) return;
-    await sendMessage(conversationId, senderId, { content: text.trim() });
-    setText("");
+    if (!text.trim() || sending) return;
+    setSending(true);
+    try {
+      await sendMessage(conversationId, senderId, { content: text.trim() });
+      setText("");
+    } catch (err) {
+      console.error("Failed to send message:", err);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -335,7 +350,7 @@ export function ChatPage() {
                     {activeConv?.type === "group"
                       ? `${activeConv.participants?.length || 0} members`
                       : recipient
-                        ? recipient.isOnline ? "online" : "offline"
+                        ? `@${recipient.username || "user"} \u2022 ${recipient.isOnline ? "online" : "offline"}`
                         : ""}
                   </div>
                 </div>
