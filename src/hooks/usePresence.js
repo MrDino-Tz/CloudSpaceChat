@@ -1,15 +1,15 @@
 import { useEffect } from "react";
-import { setUserOffline } from "@/lib/userService";
+import { setUserOnline, setUserOffline } from "@/lib/userService";
 
 export function usePresence(user) {
   useEffect(() => {
     if (!user) return;
 
+    const visible = localStorage.getItem("csc_presence_visible") !== "false";
+
+    if (visible) setUserOnline(user.uid);
+
     const handleBeforeUnload = () => {
-      navigator.sendBeacon?.(
-        `${window.location.origin}/_presence/offline`,
-        JSON.stringify({ uid: user.uid }),
-      );
       setUserOffline(user.uid);
     };
 

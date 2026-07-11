@@ -7,6 +7,9 @@ import { getAvatarUrl, getAvatarFallback } from "@/lib/avatar";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import { SidePanel } from "@/components/SidePanel";
 import { FilePreviewModal } from "@/components/FilePreviewModal";
+import { SettingsModal } from "@/components/SettingsModal";
+import { getLocalSettings, applyStyleOverrides } from "@/lib/settingsService";
+import { requestNotificationPermission, sendNotification, isInDnd, playSound } from "@/lib/notificationService";
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -115,11 +118,33 @@ function checkLinkSafety(url) {
   }
 }
 
-function renderContent(text, onLinkClick) {
+function renderContent(text, onLinkClick, settings) {
   if (!text) return null;
   const parts = text.split(LINK_RX);
+  const scanner = settings?.linkScanner || "standard";
+  const customTrusted = (settings?.trustedDomains || "").split(",").map((d) => d.trim()).filter(Boolean);
+
+  const isTrusted = (url) => {
+    try {
+      const host = new URL(url).hostname.replace("www.", "");
+      return customTrusted.some((d) => host === d || host.endsWith("." + d));
+    } catch { return false; }
+  };
+
   return parts.map((part, i) => {
     if (!LINK_RX.test(part)) return part;
+
+    if (scanner === "disabled") {
+      return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="msg-link" onClick={(e) => e.stopPropagation()}>{part}</a>;
+    }
+
+    if (scanner === "standard") {
+      const { level } = checkLinkSafety(part);
+      if (level === "safe" || isTrusted(part)) {
+        return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="msg-link" onClick={(e) => e.stopPropagation()}>{part}</a>;
+      }
+    }
+
     const { level } = checkLinkSafety(part);
     const levelClass = level === "safe" ? "link-safe" : level === "suspicious" ? "link-suspicious" : "link-unknown";
     return (
@@ -131,17 +156,40 @@ function renderContent(text, onLinkClick) {
   });
 }
 
-const CheckTicks = ({ read }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={read ? "#3b82f6" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
-    <polyline points="18 6 11 15 7 11" />
-    {read && <polyline points="22 6 15 15 13 13" />}
-  </svg>
-);
+const CheckTicks = ({ read, incognito }) => {
+  const showRead = !incognito && read;
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showRead ? "#3b82f6" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+      <polyline points="18 6 11 15 7 11" />
+      {showRead && <polyline points="22 6 15 15 13 13" />}
+    </svg>
+  );
+};
 
-function MessageBubble({ msg, isOwn, onPreview, onLinkClick }) {
+function MediaPlaceholder({ label, icon, onLoad }) {
+  return (
+    <div className="media-placeholder" onClick={onLoad}>
+      <span className="media-placeholder-icon">{icon}</span>
+      <span className="media-placeholder-label">{label}</span>
+    </div>
+  );
+}
+
+function MessageBubble({ msg, isOwn, onPreview, onLinkClick, settings }) {
   const { profile } = useAuth();
   const [sender, setSender] = useState(null);
+  const [loadedMedia, setLoadedMedia] = useState({});
   const time = msg.timestamp?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
+
+  const shouldAutoLoad = (type) => {
+    if (!settings) return true;
+    if (type === "image") return settings.autoDownloadImages !== false;
+    if (type === "video") return settings.autoDownloadVideo !== false;
+    if (type === "audio") return settings.autoDownloadAudio !== false;
+    return true;
+  };
+
+  const loadMedia = (i) => setLoadedMedia((prev) => ({ ...prev, [i]: true }));
 
   useEffect(() => {
     if (!isOwn) getUserProfile(msg.senderId).then(setSender);
@@ -159,14 +207,23 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick }) {
         <div className="message-bubble">
           {msg.attachments?.map((att, i) => {
             if (att.type === "image") {
+              if (!shouldAutoLoad("image") && !loadedMedia[i]) {
+                return <MediaPlaceholder key={i} label="Tap to load image" icon="🖼" onLoad={() => loadMedia(i)} />;
+              }
               return <img key={i} src={att.url} alt="" className="msg-attachment-img" onClick={() => onPreview?.({ type: "image", url: att.url })} />;
             }
             if (att.type === "video") {
+              if (!shouldAutoLoad("video") && !loadedMedia[i]) {
+                return <MediaPlaceholder key={i} label="Tap to load video" icon="🎬" onLoad={() => loadMedia(i)} />;
+              }
               return (
                 <video key={i} src={att.url} controls className="msg-attachment-video" onClick={() => onPreview?.({ type: "video", url: att.url })} />
               );
             }
             if (att.type === "audio") {
+              if (!shouldAutoLoad("audio") && !loadedMedia[i]) {
+                return <MediaPlaceholder key={i} label="Tap to load audio" icon="🎵" onLoad={() => loadMedia(i)} />;
+              }
               return (
                 <div key={i} className="audio-attachment">
                   <div className="audio-play-btn">
@@ -199,11 +256,11 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick }) {
               </div>
             );
           })}
-          {msg.content && !["📷 Photo", "🎥 Video", "📎 File"].includes(msg.content) && <div style={{ marginTop: msg.attachments?.length ? 6 : 0 }}>{renderContent(msg.content, onLinkClick)}</div>}
+          {msg.content && !["📷 Photo", "🎥 Video", "📎 File"].includes(msg.content) && <div style={{ marginTop: msg.attachments?.length ? 6 : 0 }}>{renderContent(msg.content, onLinkClick, settings)}</div>}
         </div>
         <div className="message-meta">
           <span>{time}</span>
-          {isOwn && <CheckTicks read={msg.readBy?.length > 1} />}
+          {isOwn && <CheckTicks read={msg.readBy?.length > 1} incognito={settings?.incognito} />}
         </div>
       </div>
     </div>
@@ -330,18 +387,28 @@ function LinkSecurityDialog({ url, onClose }) {
   );
 }
 
-function MessageInput({ conversationId, senderId, onFileSelect }) {
+function MessageInput({ conversationId, senderId, onFileSelect, settings }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const fileRef = useRef(null);
   const menuRef = useRef(null);
+  const typingSoundTimer = useRef(null);
 
   useEffect(() => {
     const close = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  const handleTyping = (e) => {
+    setText(e.target.value);
+    if (!settings?.soundTyping) return;
+    if (!typingSoundTimer.current) {
+      playSound("typing");
+      typingSoundTimer.current = setTimeout(() => { typingSoundTimer.current = null; }, 400);
+    }
+  };
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -350,6 +417,7 @@ function MessageInput({ conversationId, senderId, onFileSelect }) {
     try {
       await sendMessage(conversationId, senderId, { content: text.trim() });
       setText("");
+      if (settings?.soundOutgoing) playSound("outgoing");
     } catch (err) {
       console.error("Failed to send message:", err);
     } finally {
@@ -406,7 +474,7 @@ function MessageInput({ conversationId, senderId, onFileSelect }) {
           )}
         </div>
         <input type="file" ref={fileRef} style={{ display: "none" }} onChange={handleFile} />
-        <input type="text" className="msg-input" placeholder="Type a message..." value={text} onChange={(e) => setText(e.target.value)} />
+        <input type="text" className="msg-input" placeholder="Type a message..." value={text} onChange={handleTyping} />
         <button className="send-btn" type="submit" disabled={sending}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="22" y1="2" x2="11" y2="13" />
@@ -445,6 +513,8 @@ export function ChatPage() {
   const { user, profile, logout } = useAuth();
   const [view, setView] = useState("chats");
   const [showProfile, setShowProfile] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState(getLocalSettings());
   const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId] = useState(null);
   const [activeConv, setActiveConv] = useState(null);
@@ -462,6 +532,24 @@ export function ChatPage() {
   const messagesEnd = useRef(null);
 
   usePresence(user);
+  const prevMsgLen = useRef(0);
+
+  useEffect(() => { requestNotificationPermission(); }, []);
+
+  useEffect(() => {
+    applyStyleOverrides(settings);
+  }, [settings]);
+
+  useEffect(() => {
+    if (!settings.notificationsEnabled && !settings.soundIncoming) return;
+    if (messages.length <= prevMsgLen.current) { prevMsgLen.current = messages.length; return; }
+    const latest = messages[messages.length - 1];
+    if (!latest || latest.senderId === user?.uid) { prevMsgLen.current = messages.length; return; }
+    if (isInDnd(settings.dndEnabled, settings.dndStart, settings.dndEnd)) { prevMsgLen.current = messages.length; return; }
+    if (settings.notificationsEnabled) sendNotification("New message", latest.content || "Sent an attachment");
+    if (settings.soundIncoming) playSound("incoming");
+    prevMsgLen.current = messages.length;
+  }, [messages, settings, user?.uid]);
 
   useEffect(() => {
     if (!user) return;
@@ -561,6 +649,13 @@ export function ChatPage() {
           <span>Find People</span>
         </div>
         <div className="spacer" />
+        <div className="nav-item" onClick={() => setShowSettings(true)} title="Settings">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span>Settings</span>
+        </div>
         <div className="nav-item" onClick={logout} title="Sign out">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -669,12 +764,12 @@ export function ChatPage() {
 
             <div className="messages-container">
               {messages.map((msg) => (
-                msg.isDeleted ? null : <MessageBubble key={msg.id} msg={msg} isOwn={msg.senderId === user.uid} onPreview={setPreviewItem} onLinkClick={setPendingLink} />
+                msg.isDeleted ? null : <MessageBubble key={msg.id} msg={msg} isOwn={msg.senderId === user.uid} onPreview={setPreviewItem} onLinkClick={setPendingLink} settings={settings} />
               ))}
               <div ref={messagesEnd} />
             </div>
 
-            <MessageInput conversationId={activeConvId} senderId={user.uid} onFileSelect={setPendingFile} />
+            <MessageInput conversationId={activeConvId} senderId={user.uid} onFileSelect={setPendingFile} settings={settings} />
             {pendingFile && (
               <FilePreviewModal
                 data={pendingFile}
@@ -703,6 +798,7 @@ export function ChatPage() {
       </div>
 
       {showProfile && <ProfileEditModal onClose={() => setShowProfile(false)} />}
+      {showSettings && <SettingsModal onClose={() => { setShowSettings(false); setSettings(getLocalSettings()); }} />}
 
       {previewItem && (
         <PreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
