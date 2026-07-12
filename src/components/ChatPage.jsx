@@ -14,6 +14,7 @@ import { getLocalSettings, applyStyleOverrides } from "@/lib/settingsService";
 import { requestNotificationPermission, sendNotification, isInDnd, playSound } from "@/lib/notificationService";
 import { incrementUnreadCount, resetUnreadCount, markMessagesAsReadFromList } from "@/lib/chatService";
 import { formatMsgTime, formatConvTime, formatDateSeparator, getDateKey } from "@/lib/time";
+import { sendChatRequest, listenForRequest, listenForNotifications, acceptRequest, denyRequest, verifyCode, receiverEnterCode, regenerateCode, markNotificationRead, getPendingRequests } from "@/lib/requestService";
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -897,6 +898,17 @@ export function ChatPage() {
   const messagesEnd = useRef(null);
   const seenKeysRef = useRef({});
 
+  const [showRequestPopup, setShowRequestPopup] = useState(false);
+  const [popupRole, setPopupRole] = useState(null);
+  const [popupStep, setPopupStep] = useState("");
+  const [activeRequest, setActiveRequest] = useState(null);
+  const [activeRequestData, setActiveRequestData] = useState(null);
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [notifExpanded, setNotifExpanded] = useState(false);
+  const [otpValues, setOtpValues] = useState(["","","","","",""]);
+
   usePresence(user);
   const prevMsgLen = useRef(0);
 
@@ -1005,22 +1017,101 @@ export function ChatPage() {
     return () => clearTimeout(timer);
   }, [searchTerm, view, user.uid]);
 
+  const notifiedNotifsRef = useRef(new Set());
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = listenForNotifications(user.uid, (list) => {
+      setNotifications(list);
+      setUnreadNotifs(list.filter((n) => !n.read).length);
+
+      if (!settings.notificationsEnabled) return;
+      if (isInDnd(settings.dndEnabled, settings.dndStart, settings.dndEnd)) return;
+      list.forEach((n) => {
+        if (!n.read && !notifiedNotifsRef.current.has(n.id)) {
+          notifiedNotifsRef.current.add(n.id);
+          sendNotification(n.title, n.body);
+        }
+      });
+    });
+    return unsub;
+  }, [user, settings]);
+
+  useEffect(() => {
+    if (!activeRequest) return;
+    const unsub = listenForRequest(activeRequest, (data) => {
+      setActiveRequestData(data);
+    });
+    return unsub;
+  }, [activeRequest]);
+
+  useEffect(() => {
+    if (!activeRequestData || !popupRole) return;
+    const d = activeRequestData;
+    if (popupRole === "sender") {
+      if (d.status === "denied" && popupStep !== "denied") {
+        setPopupStep("denied");
+      } else if (d.status === "accepted" && d.receiverEntered && !d.codeVerified) {
+        setPopupStep((prev) => prev === "request-sent" ? "enter-code" : prev);
+      } else if (d.codeVerified) {
+        setPopupStep("done");
+      }
+    } else if (popupRole === "receiver") {
+      if (d.codeVerified) {
+        setPopupStep((prev) => prev === "waiting-sender" ? "done" : prev);
+      }
+    }
+  }, [activeRequestData, popupRole, popupStep]);
+
+  const closeRequestPopup = useCallback(() => {
+    setShowRequestPopup(false);
+    setPopupRole(null);
+    setPopupStep("");
+    setActiveRequest(null);
+    setActiveRequestData(null);
+    setGeneratedCode("");
+    setOtpValues(["","","","","",""]);
+  }, []);
+
+  useEffect(() => {
+    if (popupStep !== "done" || !activeRequestData) return;
+    const otherUid = activeRequestData.senderId === user.uid ? activeRequestData.receiverId : activeRequestData.senderId;
+    const timer = setTimeout(async () => {
+      const convId = await createPrivateConversation(user.uid, otherUid);
+      setActiveConvId(convId);
+      setView("chats");
+      closeRequestPopup();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [popupStep, activeRequestData, user.uid, closeRequestPopup]);
+
   const startChatWithUser = useCallback(async (foundUser) => {
     if (startingChat) return;
     setStartingChat(true);
     setActionError("");
     try {
-      const convId = await createPrivateConversation(user.uid, foundUser.uid);
-      setActiveConvId(convId);
-      setView("chats");
-      setSearchTerm("");
+      const pendingReqs = await getPendingRequests(foundUser.uid);
+      const existing = pendingReqs.find((r) => r.senderId === user.uid);
+      if (existing) {
+        setActiveRequest(existing.id);
+        setPopupRole("sender");
+        setPopupStep("request-sent");
+        setShowRequestPopup(true);
+        setStartingChat(false);
+        return;
+      }
+      const reqId = await sendChatRequest(user.uid, foundUser.uid, profile?.displayName || user.email, profile?.avatar || null);
+      setActiveRequest(reqId);
+      setPopupRole("sender");
+      setPopupStep("request-sent");
+      setShowRequestPopup(true);
     } catch (err) {
-      console.error("Failed to create conversation:", err);
-      setActionError(err.message || "Failed to start chat. Check Firestore rules.");
+      console.error("Failed to send chat request:", err);
+      setActionError(err.message || "Failed to send request.");
     } finally {
       setStartingChat(false);
     }
-  }, [user.uid, startingChat]);
+  }, [user.uid, user.email, startingChat, profile]);
 
   const convName = activeConv?.type === "group"
     ? activeConv.name
@@ -1058,6 +1149,16 @@ export function ChatPage() {
           </svg>
           <span>Find People</span>
         </div>
+        <div className={`nav-item ${view === "notifications" ? "active" : ""}`} onClick={() => { setView("notifications"); setNotifExpanded(true); setShowMobileMenu(false); }} title="Notifications">
+          <div className="nav-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {unreadNotifs > 0 && <span className="nav-unread-badge">{unreadNotifs > 99 ? "99+" : unreadNotifs}</span>}
+          </div>
+          <span>Notifly</span>
+        </div>
         <div className="spacer" />
         <div className="nav-item" onClick={() => { setShowSettings(true); setShowMobileMenu(false); }} title="Settings">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1086,8 +1187,9 @@ export function ChatPage() {
             <button className="mobile-hamburger-btn" onClick={() => setShowMobileMenu(true)}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
-            <span className="chat-list-title">Chats</span>
+            <span className="chat-list-title">{view === "notifications" ? "Notifications" : view === "find-people" ? "Find People" : "Chats"}</span>
           </div>
+          {view !== "notifications" && (
           <div className="new-btn-wrapper" ref={newBtnRef}>
             <button className="new-chat-btn" onClick={() => setShowNewMenu(!showNewMenu)}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1107,7 +1209,9 @@ export function ChatPage() {
               </div>
             )}
           </div>
+        )}
         </div>
+        {view !== "notifications" && (
         <div className="search-container">
           <div className="search-input-wrapper">
             <input
@@ -1123,7 +1227,88 @@ export function ChatPage() {
             </svg>
           </div>
         </div>
+        )}
 
+        {view === "notifications" && (
+        <div className="notif-section">
+          <div className="notif-header" onClick={() => setNotifExpanded(!notifExpanded)}>
+            <div className="notif-header-left">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span>Notifications</span>
+              {unreadNotifs > 0 && <span className="notif-badge">{unreadNotifs}</span>}
+            </div>
+            <span className={`notif-chevron ${notifExpanded ? "expanded" : ""}`}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
+          </div>
+          {notifExpanded && (
+            <div className="notif-list">
+              {notifications.length === 0 ? (
+                <div className="notif-empty">No notifications</div>
+              ) : (
+                notifications.map((n) => (
+                  <div key={n.id} className={`notif-item ${!n.read ? "unread" : ""}`}>
+                    <div className="notif-content" onClick={async () => {
+                      await markNotificationRead(n.id);
+                      if (n.type === "request_accepted" && n.data) {
+                        setActiveRequest(n.data.requestId);
+                        setPopupRole("sender");
+                        setPopupStep("enter-code");
+                        setShowRequestPopup(true);
+                      }
+                    }}>
+                      <div className="notif-title">{n.title}</div>
+                      <div className="notif-body">{n.body}</div>
+                    </div>
+                    {n.type === "chat_request" && n.data && (
+                      <div className="notif-actions">
+                        <button className="notif-btn notif-accept" onClick={async (e) => {
+                          e.stopPropagation();
+                          await markNotificationRead(n.id);
+                          const code = await acceptRequest(n.data.requestId);
+                          setActiveRequest(n.data.requestId);
+                          setPopupRole("receiver");
+                          setGeneratedCode(code);
+                          setPopupStep("show-code");
+                          setShowRequestPopup(true);
+                        }}>Accept</button>
+                        <button className="notif-btn notif-deny" onClick={async (e) => {
+                          e.stopPropagation();
+                          await markNotificationRead(n.id);
+                          await denyRequest(n.data.requestId);
+                        }}>Deny</button>
+                      </div>
+                    )}
+                    {n.type === "request_accepted" && n.data && (
+                      <div className="notif-actions">
+                        <button className="notif-btn notif-accept" onClick={async (e) => {
+                          e.stopPropagation();
+                          await markNotificationRead(n.id);
+                          setActiveRequest(n.data.requestId);
+                          setPopupRole("sender");
+                          setPopupStep("enter-code");
+                          setShowRequestPopup(true);
+                        }}>Enter Code</button>
+                      </div>
+                    )}
+                    {n.type === "request_denied" && (
+                      <div className="notif-actions">
+                        <button className="notif-btn notif-deny" onClick={async (e) => {
+                          e.stopPropagation();
+                          await markNotificationRead(n.id);
+                        }}>Dismiss</button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {view !== "notifications" && (
+        <>
         {actionError && (
           <div style={{ padding: "8px 16px", background: "#fef2f2", color: "#dc2626", fontSize: 13, borderBottom: "1px solid #fecaca" }}>
             {actionError}
@@ -1158,6 +1343,8 @@ export function ChatPage() {
             ))
           )}
         </div>
+        </>
+        )}
       </div>
 
       <div className="main-chat">
@@ -1272,6 +1459,153 @@ export function ChatPage() {
       )}
 
       {pendingLink && <LinkSecurityDialog url={pendingLink} onClose={() => setPendingLink(null)} />}
+
+      {showRequestPopup && (
+        <div className="request-popup-overlay" onClick={closeRequestPopup}>
+          <div className="request-popup" onClick={(e) => e.stopPropagation()}>
+            {popupRole === "sender" && popupStep === "request-sent" && (
+              <div className="request-popup-content">
+                <div className="request-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <h3>Request Sent</h3>
+                <p>Waiting for the other person to respond...</p>
+              </div>
+            )}
+
+            {popupRole === "sender" && popupStep === "enter-code" && (
+              <div className="request-popup-content">
+                <h3>Enter Verification Code</h3>
+                <p>Ask the receiver for the 6-digit code</p>
+                <div className="otp-boxes">
+                  {otpValues.map((val, i) => (
+                    <input
+                      key={i}
+                      type="text"
+                      maxLength={1}
+                      className="otp-box"
+                      value={val}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "");
+                        const newOtp = [...otpValues];
+                        newOtp[i] = v;
+                        setOtpValues(newOtp);
+                        if (v && i < 5) document.getElementById(`s-otp-${i + 1}`)?.focus();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Backspace" && !otpValues[i] && i > 0) {
+                          const newOtp = [...otpValues];
+                          newOtp[i - 1] = "";
+                          setOtpValues(newOtp);
+                          document.getElementById(`s-otp-${i - 1}`)?.focus();
+                        }
+                      }}
+                      id={`s-otp-${i}`}
+                      autoFocus={i === 0}
+                    />
+                  ))}
+                </div>
+                <div className="request-popup-actions">
+                  <button
+                    className="verify-btn"
+                    disabled={otpValues.some((v) => !v)}
+                    onClick={async () => {
+                      const ok = await verifyCode(activeRequest, otpValues.join(""));
+                      if (!ok) {
+                        setOtpValues(["","","","","",""]);
+                      } else {
+                        setPopupStep("done");
+                      }
+                    }}
+                  >
+                    Verify
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {popupStep === "denied" && (
+              <div className="request-popup-content">
+                <h3>Request Denied</h3>
+                <p>The chat request was declined.</p>
+                <div className="request-popup-actions">
+                  <button className="verify-btn" onClick={closeRequestPopup}>Close</button>
+                </div>
+              </div>
+            )}
+
+            {popupRole === "receiver" && popupStep === "show-code" && (
+              <div className="request-popup-content">
+                <h3>Verification Code</h3>
+                <p>Share this code with the sender:</p>
+                <div className="otp-display">{generatedCode}</div>
+                <p>Enter the code to confirm:</p>
+                <div className="otp-boxes">
+                  {otpValues.map((val, i) => (
+                    <input
+                      key={i}
+                      type="text"
+                      maxLength={1}
+                      className="otp-box"
+                      value={val}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "");
+                        const newOtp = [...otpValues];
+                        newOtp[i] = v;
+                        setOtpValues(newOtp);
+                        if (v && i < 5) document.getElementById(`r-otp-${i + 1}`)?.focus();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Backspace" && !otpValues[i] && i > 0) {
+                          const newOtp = [...otpValues];
+                          newOtp[i - 1] = "";
+                          setOtpValues(newOtp);
+                          document.getElementById(`r-otp-${i - 1}`)?.focus();
+                        }
+                      }}
+                      id={`r-otp-${i}`}
+                      autoFocus={i === 0}
+                    />
+                  ))}
+                </div>
+                <div className="request-popup-actions">
+                  <button
+                    className="verify-btn"
+                    disabled={otpValues.some((v) => !v)}
+                    onClick={async () => {
+                      const ok = await receiverEnterCode(activeRequest, otpValues.join(""));
+                      if (!ok) {
+                        setOtpValues(["","","","","",""]);
+                      } else {
+                        setPopupStep("waiting-sender");
+                      }
+                    }}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {popupRole === "receiver" && popupStep === "waiting-sender" && (
+              <div className="request-popup-content">
+                <div className="request-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <h3>Code Confirmed!</h3>
+                <p>Waiting for sender to verify...</p>
+              </div>
+            )}
+
+            {popupStep === "done" && (
+              <div className="request-popup-content">
+                <h3>Connected!</h3>
+                <p>Starting conversation...</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

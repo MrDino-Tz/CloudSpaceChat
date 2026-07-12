@@ -11,7 +11,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      console.warn("Auth timeout — forcing loading false");
+      setLoading(false);
+    }, 5000);
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(timer);
       if (firebaseUser) {
         try {
           const p = await createUserProfile(firebaseUser);
@@ -26,7 +32,10 @@ export function AuthProvider({ children }) {
       setUser(firebaseUser);
       setLoading(false);
     });
-    return unsub;
+    return () => {
+      clearTimeout(timer);
+      unsub();
+    };
   }, []);
 
   const logout = async () => {
