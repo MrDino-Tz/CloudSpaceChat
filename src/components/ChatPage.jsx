@@ -14,7 +14,7 @@ import { getLocalSettings, applyStyleOverrides } from "@/lib/settingsService";
 import { requestNotificationPermission, sendNotification, isInDnd, playSound } from "@/lib/notificationService";
 import { incrementUnreadCount, resetUnreadCount, markMessagesAsReadFromList } from "@/lib/chatService";
 import { formatMsgTime, formatConvTime, formatDateSeparator, getDateKey } from "@/lib/time";
-import { sendChatRequest, listenForRequest, listenForNotifications, acceptRequest, denyRequest, verifyCode, receiverEnterCode, regenerateCode, markNotificationRead, getPendingRequests } from "@/lib/requestService";
+import { sendChatRequest, listenForRequest, listenForNotifications, acceptRequest, denyRequest, verifyCode, receiverEnterCode, regenerateCode, markNotificationRead, deleteNotification, getPendingRequests } from "@/lib/requestService";
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -897,6 +897,7 @@ export function ChatPage() {
   const newBtnRef = useRef(null);
   const messagesEnd = useRef(null);
   const seenKeysRef = useRef({});
+  const notifToDeleteRef = useRef(null);
 
   const [showRequestPopup, setShowRequestPopup] = useState(false);
   const [popupRole, setPopupRole] = useState(null);
@@ -1071,6 +1072,7 @@ export function ChatPage() {
     setActiveRequestData(null);
     setGeneratedCode("");
     setOtpValues(["","","","","",""]);
+    notifToDeleteRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -1251,6 +1253,7 @@ export function ChatPage() {
                     <div className="notif-content" onClick={async () => {
                       await markNotificationRead(n.id);
                       if (n.type === "request_accepted" && n.data) {
+                        notifToDeleteRef.current = n.id;
                         setActiveRequest(n.data.requestId);
                         setPopupRole("sender");
                         setPopupStep("enter-code");
@@ -1266,6 +1269,7 @@ export function ChatPage() {
                           e.stopPropagation();
                           await markNotificationRead(n.id);
                           const code = await acceptRequest(n.data.requestId);
+                          await deleteNotification(n.id);
                           setActiveRequest(n.data.requestId);
                           setPopupRole("receiver");
                           setGeneratedCode(code);
@@ -1276,6 +1280,7 @@ export function ChatPage() {
                           e.stopPropagation();
                           await markNotificationRead(n.id);
                           await denyRequest(n.data.requestId);
+                          await deleteNotification(n.id);
                         }}>Deny</button>
                       </div>
                     )}
@@ -1284,6 +1289,7 @@ export function ChatPage() {
                         <button className="notif-btn notif-accept" onClick={async (e) => {
                           e.stopPropagation();
                           await markNotificationRead(n.id);
+                          notifToDeleteRef.current = n.id;
                           setActiveRequest(n.data.requestId);
                           setPopupRole("sender");
                           setPopupStep("enter-code");
@@ -1296,6 +1302,7 @@ export function ChatPage() {
                         <button className="notif-btn notif-deny" onClick={async (e) => {
                           e.stopPropagation();
                           await markNotificationRead(n.id);
+                          await deleteNotification(n.id);
                         }}>Dismiss</button>
                       </div>
                     )}
@@ -1514,6 +1521,10 @@ export function ChatPage() {
                       if (!ok) {
                         setOtpValues(["","","","","",""]);
                       } else {
+                        if (notifToDeleteRef.current) {
+                          await deleteNotification(notifToDeleteRef.current);
+                          notifToDeleteRef.current = null;
+                        }
                         setPopupStep("done");
                       }
                     }}

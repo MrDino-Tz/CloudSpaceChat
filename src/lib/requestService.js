@@ -1,5 +1,5 @@
 import {
-  collection, addDoc, doc, updateDoc, getDoc, setDoc,
+  collection, addDoc, doc, updateDoc, getDoc, setDoc, deleteDoc,
   query, where, onSnapshot, serverTimestamp, getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -155,6 +155,10 @@ export async function regenerateCode(requestId) {
 
 export async function markNotificationRead(notificationId) {
   await updateDoc(doc(db, 'notifications', notificationId), { read: true });
+}
+
+export async function deleteNotification(notificationId) {
+  await deleteDoc(doc(db, 'notifications', notificationId));
 }
 
 export async function getPendingRequests(userId) {
