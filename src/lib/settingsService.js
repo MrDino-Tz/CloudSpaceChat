@@ -21,7 +21,7 @@ export const DEFAULTS = {
   autoDownloadImages: true,
   autoDownloadVideo: false,
   autoDownloadAudio: false,
-  theme: "light",
+  theme: "dark",
 };
 
 export function getLocalSettings() {
