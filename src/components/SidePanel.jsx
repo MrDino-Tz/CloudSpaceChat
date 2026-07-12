@@ -30,19 +30,45 @@ function getFileIcon(name) {
   return FILE_ICONS[ext] || { color: "#6b7280", label: (ext || "FILE").toUpperCase() };
 }
 
-function MemberAvatar({ uid, isAdmin, isSelf }) {
-  const [user, setUser] = useState(null);
-  useEffect(() => { getUserProfile(uid).then(setUser); }, [uid]);
+function MemberRow({ member, isAdmin, isSelf, currentUserId, admins, onAction, onSelect }) {
+  const [user, setUser] = useState(member);
+  const [hover, setHover] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
+  useEffect(() => { if (member?.uid) getUserProfile(member.uid).then(setUser); }, [member?.uid]);
   const name = user?.displayName || "U";
+  const avatarUrl = user?.avatar || `https://ui-avatars.com/api/?name=${name}&background=F59B1D&color=fff`;
   return (
-    <div className="member-avatar-wrapper" title={`${name}${isAdmin ? " (admin)" : ""}`}>
-      <img
-        className="member-avatar"
-        src={user?.avatar || `https://ui-avatars.com/api/?name=${name}&background=F59B1D&color=fff`}
-        alt=""
-      />
-      {isAdmin && <div className="admin-badge" title="Admin">★</div>}
-      {isSelf && <div className="self-badge">You</div>}
+    <div
+      className="member-row"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={() => onSelect?.(user)}
+      onContextMenu={(e) => { e.preventDefault(); setContextOpen(true); }}
+      style={{ cursor: onSelect ? "pointer" : undefined }}
+    >
+      <div className="member-avatar-wrapper">
+        <img className="member-avatar" src={avatarUrl} alt="" />
+        {isAdmin && <div className="admin-badge" title="Admin">★</div>}
+        {isSelf && <div className="self-badge">You</div>}
+      </div>
+      {contextOpen && onAction && !isSelf && admins?.includes(currentUserId) && (
+        <>
+          <div className="modal-backdrop" onClick={() => setContextOpen(false)} />
+          <div className="member-actions-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="member-action-item" onClick={() => { setContextOpen(false); onAction("toggleAdmin", member.uid); }}>
+              {isAdmin ? "Remove admin" : "Make admin"}
+            </div>
+            <div className="member-action-item member-action-danger" onClick={() => { setContextOpen(false); onAction("remove", member.uid); }}>
+              Remove from group
+            </div>
+          </div>
+        </>
+      )}
+      {hover && !isSelf && (
+        <div className="member-tooltip">
+          <div className="member-tooltip-name">{name}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -132,17 +158,41 @@ function AddMemberModal({ conversationId, currentUserId, onClose, onMembersChang
 function EditGroupModal({ conversation, onClose, onUpdated }) {
   const [name, setName] = useState(conversation?.name || "");
   const [desc, setDesc] = useState(conversation?.description || "");
+  const [rules, setRules] = useState(conversation?.rules || "");
+  const [avatar, setAvatar] = useState(conversation?.avatar || "");
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleBackdrop = (e) => {
     if (e.target === e.currentTarget) onClose();
   };
 
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) return;
+    setUploading(true);
+    try {
+      const { uploadToCloudinary } = await import("@/lib/cloudinary");
+      const result = await uploadToCloudinary(file, { folder: `groups/${conversation.id}` });
+      setAvatar(result.secure_url);
+    } catch (e) {
+      console.error("Avatar upload failed:", e);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim() || saving) return;
     setSaving(true);
     try {
-      await updateGroupInfo(conversation.id, { name: name.trim(), description: desc.trim() });
+      await updateGroupInfo(conversation.id, {
+        name: name.trim(),
+        description: desc.trim(),
+        rules: rules.trim(),
+        avatar: avatar || "",
+      });
       onUpdated?.();
       onClose();
     } catch (e) {
@@ -154,7 +204,7 @@ function EditGroupModal({ conversation, onClose, onUpdated }) {
 
   return (
     <div className="modal-backdrop" onClick={handleBackdrop}>
-      <div className="modal-box" style={{ maxWidth: 380 }}>
+      <div className="modal-box" style={{ maxWidth: 400 }}>
         <div className="modal-header">
           <div className="modal-title-row">
             <span className="modal-brand">Edit Group</span>
@@ -166,15 +216,33 @@ function EditGroupModal({ conversation, onClose, onUpdated }) {
           </button>
         </div>
         <div className="modal-body">
+          <div className="form-group" style={{ textAlign: "center", marginBottom: 16 }}>
+            <label className="edit-group-avatar-label">
+              <input type="file" accept="image/*" onChange={handleAvatarUpload} hidden />
+              {uploading ? (
+                <div className="edit-group-avatar uploading">Uploading...</div>
+              ) : avatar ? (
+                <img className="edit-group-avatar" src={avatar} alt="" />
+              ) : (
+                <div className="edit-group-avatar edit-group-avatar-placeholder">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+              )}
+            </label>
+          </div>
           <div className="form-group">
             <label className="form-label">Group Name</label>
             <input type="text" className="form-input" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="form-group" style={{ marginTop: 12 }}>
             <label className="form-label">Description</label>
-            <textarea className="form-input form-textarea" rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Group description..." />
+            <textarea className="form-input form-textarea" rows={2} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Group description..." />
           </div>
-          <button className="group-create-btn" onClick={handleSave} disabled={saving || !name.trim()}>
+          <div className="form-group" style={{ marginTop: 12 }}>
+            <label className="form-label">Rules</label>
+            <textarea className="form-input form-textarea" rows={3} value={rules} onChange={(e) => setRules(e.target.value)} placeholder="Group rules..." />
+          </div>
+          <button className="group-create-btn" onClick={handleSave} disabled={saving || uploading || !name.trim()}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
@@ -194,6 +262,7 @@ export function SidePanel({ conversation, currentUserId, onClose, onConversation
   const [showEditGroup, setShowEditGroup] = useState(false);
   const [confirmingAction, setConfirmingAction] = useState(null);
   const [memberActions, setMemberActions] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const isGroup = conversation?.type === "group";
   const participants = conversation?.participants || [];
@@ -270,7 +339,34 @@ export function SidePanel({ conversation, currentUserId, onClose, onConversation
 
   return (
     <div className="right-panel-inner">
+      {/* User Detail View */}
+      {selectedUser ? (
+        <div className="user-detail-view">
+          <div className="user-detail-back" onClick={() => setSelectedUser(null)}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>Back</span>
+          </div>
+          <div className="user-detail-avatar">
+            {selectedUser.avatar ? (
+              <img src={getAvatarUrl(selectedUser)} alt="" />
+            ) : (
+              <div className="group-avatar-large" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "var(--primary-color)", color: "#fff", fontSize: 32, fontWeight: 700 }}>
+                {getAvatarFallback(selectedUser.displayName || "U")}
+              </div>
+            )}
+          </div>
+          <div className="user-detail-name">{selectedUser.displayName || "User"}</div>
+          {selectedUser.phoneNumber && <div className="user-detail-info">{selectedUser.phoneNumber}</div>}
+          {selectedUser.username && <div className="user-detail-info">@{selectedUser.username}</div>}
+          {selectedUser.bio && <div className="user-detail-bio">{selectedUser.bio}</div>}
+          {selectedUser.status && <div className="user-detail-status">{selectedUser.status}</div>}
+        </div>
+      ) : null}
+
       {/* Group / User Info */}
+      {!selectedUser && (
       <div className="group-info">
         {isGroup ? (
           <>
@@ -311,7 +407,10 @@ export function SidePanel({ conversation, currentUserId, onClose, onConversation
           </>
         ) : null}
       </div>
+      )}
 
+      {!selectedUser && (
+      <>
       {/* Shared Media */}
       <div className="panel-section">
         <div className="section-header">
@@ -343,11 +442,46 @@ export function SidePanel({ conversation, currentUserId, onClose, onConversation
         )}
       </div>
 
+      {/* About this group (group only) */}
+      {isGroup && (
+        <div className="panel-section">
+          <div className="section-header">
+            <span className="section-title">About this group</span>
+          </div>
+          <div className="group-about-card">
+            <div className="group-about-row">
+              <span className="group-about-label">Created by</span>
+              <span className="group-about-value">
+                {members.find((m) => m.uid === conversation?.createdBy)?.displayName || "Unknown"}
+              </span>
+            </div>
+            <div className="group-about-row">
+              <span className="group-about-label">Admins</span>
+              <span className="group-about-value">
+                {admins.map((a) => members.find((m) => m.uid === a)?.displayName || "Unknown").join(", ")}
+              </span>
+            </div>
+            {conversation?.rules && (
+              <div className="group-about-row">
+                <span className="group-about-label">Rules</span>
+                <span className="group-about-value group-about-rules">{conversation.rules}</span>
+              </div>
+            )}
+            <div className="group-about-row">
+              <span className="group-about-label">Admin powers</span>
+              <span className="group-about-value group-about-powers">
+                Add/remove members, edit group info, promote/demote admins, delete group
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Members (group only) */}
       {isGroup && members.length > 0 && (
         <div className="panel-section">
           <div className="section-header">
-            <span className="section-title">Members</span>
+            <span className="section-title">Members ({members.length})</span>
             <div className="section-actions">
               {isAdmin && (
                 <span className="see-all" onClick={() => setShowAddMember(true)} style={{ marginRight: 8 }}>
@@ -361,28 +495,24 @@ export function SidePanel({ conversation, currentUserId, onClose, onConversation
               )}
             </div>
           </div>
-          <div className="members-list" style={{ flexWrap: "wrap" }}>
+          <div className="member-rows-list">
             {visibleMembers.map((m) => (
-              <div
+              <MemberRow
                 key={m.uid}
-                className={`member-wrapper ${memberActions === m.uid ? "member-actions-open" : ""}`}
-                onContextMenu={(e) => { e.preventDefault(); setMemberActions(memberActions === m.uid ? null : m.uid); }}
-              >
-                <MemberAvatar uid={m.uid} isAdmin={admins.includes(m.uid)} isSelf={m.uid === currentUserId} />
-                {memberActions === m.uid && isAdmin && m.uid !== currentUserId && (
-                  <div className="member-actions-popup">
-                    <div className="member-action-item" onClick={() => handleToggleAdmin(m.uid)}>
-                      {admins.includes(m.uid) ? "Remove admin" : "Make admin"}
-                    </div>
-                    <div className="member-action-item member-action-danger" onClick={() => setConfirmingAction({ type: "remove", uid: m.uid })}>
-                      Remove from group
-                    </div>
-                  </div>
-                )}
-              </div>
+                member={m}
+                isAdmin={admins.includes(m.uid)}
+                isSelf={m.uid === currentUserId}
+                currentUserId={currentUserId}
+                admins={admins}
+                onSelect={setSelectedUser}
+                onAction={isAdmin ? (type, uid) => {
+                  if (type === "toggleAdmin") handleToggleAdmin(uid);
+                  if (type === "remove") setConfirmingAction({ type: "remove", uid });
+                } : null}
+              />
             ))}
             {!showAllMembers && extraCount > 0 && (
-              <div className="more-members">+{extraCount}</div>
+              <div className="more-members-row">+{extraCount} more</div>
             )}
           </div>
         </div>
@@ -438,12 +568,6 @@ export function SidePanel({ conversation, currentUserId, onClose, onConversation
       {isGroup && (
         <div className="panel-section">
           <div className="group-actions">
-            {(isAdmin || true) && (
-              <button className="group-action-btn" onClick={() => setShowAddMember(true)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Add Members
-              </button>
-            )}
             {isAdmin && (
               <button className="group-action-btn" onClick={() => setShowEditGroup(true)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -464,6 +588,7 @@ export function SidePanel({ conversation, currentUserId, onClose, onConversation
         </div>
       )}
 
+      </>)}
       {/* Close */}
       <div style={{ padding: 16, textAlign: "center" }}>
         <span className="see-all" onClick={onClose}>Close</span>

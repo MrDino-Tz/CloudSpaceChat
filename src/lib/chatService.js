@@ -216,6 +216,7 @@ export async function updateGroupInfo(conversationId, data) {
   if (data.name !== undefined) update.name = data.name;
   if (data.description !== undefined) update.description = data.description;
   if (data.avatar !== undefined) update.avatar = data.avatar;
+  if (data.rules !== undefined) update.rules = data.rules;
   await updateDoc(doc(db, "conversations", conversationId), update);
 }
 

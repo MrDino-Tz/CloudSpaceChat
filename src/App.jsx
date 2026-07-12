@@ -4,6 +4,7 @@ import { AuthPage } from '@/components/ui/AuthPage';
 import { HomePage } from '@/components/HomePage';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import SecurityDocs from './pages/SecurityDocs';
 
 function App() {
   const { user, loading } = useAuth();
@@ -16,6 +17,7 @@ function App() {
         <Route path="/" element={user ? <HomePage /> : <AuthPage />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/docs/end-to-end" element={<SecurityDocs />} />
       </Routes>
     </Router>
   );
