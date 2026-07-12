@@ -867,6 +867,7 @@ export function ChatPage() {
   const [previewItem, setPreviewItem] = useState(null);
   const [pendingLink, setPendingLink] = useState(null);
   const [showNewMenu, setShowNewMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const newBtnRef = useRef(null);
   const messagesEnd = useRef(null);
   const seenKeysRef = useRef({});
@@ -992,16 +993,16 @@ export function ChatPage() {
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount?.[user?.uid] || 0), 0);
 
   return (
-    <div className="app-window">
+    <div className={`app-window ${activeConvId ? "mobile-chat-active" : ""} ${showMobileMenu ? "mobile-menu-open" : ""}`}>
       <div className="sidebar">
-        <div className="sidebar-avatar-wrapper" onClick={() => setShowProfile(true)} title="Edit profile">
+        <div className="sidebar-avatar-wrapper" onClick={() => { setShowProfile(true); setShowMobileMenu(false); }} title="Edit profile">
           {profile?.avatar ? (
             <img src={getAvatarUrl(profile)} alt="avatar" className="profile-avatar" />
           ) : (
             <div className="profile-avatar profile-avatar-letter-lg">{getAvatarFallback(avatarName)}</div>
           )}
         </div>
-        <div className={`nav-item ${view === "chats" ? "active" : ""}`} onClick={() => setView("chats")}>
+        <div className={`nav-item ${view === "chats" ? "active" : ""}`} onClick={() => { setView("chats"); setShowMobileMenu(false); }}>
           <div className="nav-icon-wrapper">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -1010,7 +1011,7 @@ export function ChatPage() {
           </div>
           <span>Chats</span>
         </div>
-        <div className={`nav-item ${view === "find-people" ? "active" : ""}`} onClick={() => setView("find-people")}>
+        <div className={`nav-item ${view === "find-people" ? "active" : ""}`} onClick={() => { setView("find-people"); setShowMobileMenu(false); }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -1020,14 +1021,14 @@ export function ChatPage() {
           <span>Find People</span>
         </div>
         <div className="spacer" />
-        <div className="nav-item" onClick={() => setShowSettings(true)} title="Settings">
+        <div className="nav-item" onClick={() => { setShowSettings(true); setShowMobileMenu(false); }} title="Settings">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
           <span>Settings</span>
         </div>
-        <div className="nav-item" onClick={logout} title="Sign out">
+        <div className="nav-item" onClick={() => { logout(); setShowMobileMenu(false); }} title="Sign out">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
@@ -1037,9 +1038,18 @@ export function ChatPage() {
         </div>
       </div>
 
+      {showMobileMenu && (
+        <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)} />
+      )}
+
       <div className="chat-list-panel">
         <div className="chat-list-header">
-          <span className="chat-list-title">Chats</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button className="mobile-hamburger-btn" onClick={() => setShowMobileMenu(true)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <span className="chat-list-title">Chats</span>
+          </div>
           <div className="new-btn-wrapper" ref={newBtnRef}>
             <button className="new-chat-btn" onClick={() => setShowNewMenu(!showNewMenu)}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1116,7 +1126,11 @@ export function ChatPage() {
         {activeConvId ? (
           <>
             <div className="chat-header">
-              <div className="chat-header-info" style={{ display: "flex", alignItems: "center", gap: 12 }} onClick={() => setShowSidePanel(!showSidePanel)}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button className="mobile-back-btn" onClick={() => setActiveConvId(null)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                </button>
+                <div className="chat-header-info" style={{ display: "flex", alignItems: "center", gap: 12 }} onClick={() => setShowSidePanel(!showSidePanel)}>
                 {recipient ? (
                   <div className="chat-avatar-container" style={{ margin: 0 }}>
                     {recipient.avatar ? (
@@ -1146,6 +1160,7 @@ export function ChatPage() {
                         ? `@${recipient.username || "user"} \u2022 ${recipient.isOnline ? "online" : "offline"}`
                         : ""}
                   </div>
+                </div>
                 </div>
               </div>
               <div className="chat-actions">
