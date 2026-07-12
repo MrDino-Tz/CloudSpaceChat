@@ -271,10 +271,6 @@ export function AuthPage() {
     return s.theme === 'dark';
   });
 
-  useEffect(() => {
-    applyTheme(isDark ? 'dark' : 'light');
-  }, []);
-
   const toggleTheme = () => {
     const next = isDark ? 'light' : 'dark';
     setIsDark(!isDark);

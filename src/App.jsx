@@ -1,13 +1,20 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthPage } from '@/components/ui/AuthPage';
 import { HomePage } from '@/components/HomePage';
+import { applyTheme, getLocalSettings } from '@/lib/settingsService';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import SecurityDocs from './pages/SecurityDocs';
 
 function App() {
   const { user, loading } = useAuth();
+
+  useEffect(() => {
+    const s = getLocalSettings();
+    applyTheme(s.theme || 'dark');
+  }, []);
 
   if (loading) return null;
 
