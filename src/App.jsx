@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthPage } from '@/components/ui/AuthPage';
 import { HomePage } from '@/components/HomePage';
@@ -11,10 +11,14 @@ function App() {
 
   if (loading) return null;
 
+  const basename = import.meta.env.BASE_URL || '/';
+
   return (
-    <Router>
+    <Router basename={basename}>
       <Routes>
-        <Route path="/" element={user ? <HomePage /> : <AuthPage />} />
+        <Route path="/auth" element={user ? <Navigate to="/chatroom/" replace /> : <AuthPage />} />
+        <Route path="/chatroom/" element={user ? <HomePage /> : <Navigate to="/auth" replace />} />
+        <Route path="/" element={<Navigate to={user ? "/chatroom/" : "/auth"} replace />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/docs/end-to-end" element={<SecurityDocs />} />

@@ -281,10 +281,10 @@ export function AuthPage() {
       </div>
 
       <div className="auth-container">
-        <a href="#" className="auth-back-btn">
+        <Link to="/" className="auth-back-btn">
           <ChevronLeft style={{ width: 16, height: 16 }} />
           Home
-        </a>
+        </Link>
 
         <div className="auth-card">
           {/* Brand */}
