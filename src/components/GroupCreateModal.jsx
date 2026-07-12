@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAllUsers } from "@/lib/userService";
-import { createGroupConversation } from "@/lib/chatService";
+import { createGroupConversation, sendSystemMessage } from "@/lib/chatService";
 import { getAvatarUrl, getAvatarFallback } from "@/lib/avatar";
 
 export function GroupCreateModal({ onClose, onCreated }) {
@@ -43,6 +43,7 @@ export function GroupCreateModal({ onClose, onCreated }) {
         participants: [user.uid, ...selected.map((u) => u.uid)],
         createdBy: user.uid,
       });
+      await sendSystemMessage(convId, "Group created");
       onCreated(convId);
       onClose();
     } catch (err) {

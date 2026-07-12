@@ -12,6 +12,7 @@ import { GroupCreateModal } from "@/components/GroupCreateModal";
 import { getLocalSettings, applyStyleOverrides } from "@/lib/settingsService";
 import { requestNotificationPermission, sendNotification, isInDnd, playSound } from "@/lib/notificationService";
 import { incrementUnreadCount, resetUnreadCount } from "@/lib/chatService";
+import { formatMsgTime, formatConvTime, formatDateSeparator, getDateKey } from "@/lib/time";
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ function ConversationItem({ conv, active, onClick }) {
   const preview = lm.type === "image" ? "📷 Photo" : lm.type === "video" ? "🎥 Video" : lm.type === "file" ? `📎 ${lm.attachments?.[0]?.name || "File"}` : hasLink ? "🔗 Link" : lm.content || "No messages yet";
   const isOnline = otherUser?.isOnline;
   const unread = conv.unreadCount?.[user?.uid] || 0;
+  const convTime = formatConvTime(conv.updatedAt || conv.lastMessage?.timestamp);
 
   return (
     <div className={`chat-item ${active ? "active" : ""}`} onClick={onClick}>
@@ -48,10 +50,11 @@ function ConversationItem({ conv, active, onClick }) {
       <div className="chat-info">
         <div className="chat-header-row">
           <span className={`chat-name ${unread > 0 ? "chat-name-unread" : ""}`}>{name}</span>
-          {unread > 0 && <span className="unread-badge">{unread > 99 ? "99+" : unread}</span>}
+          <span className="chat-time">{convTime}</span>
         </div>
         <div className="chat-preview-row">
           <span className={`chat-preview ${unread > 0 ? "chat-preview-unread" : ""}`}>{preview}</span>
+          {unread > 0 && <span className="unread-badge">{unread > 99 ? "99+" : unread}</span>}
         </div>
       </div>
     </div>
@@ -397,7 +400,7 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.content || "");
   const [starred, setStarred] = useState(msg.starredBy?.includes(user?.uid) || false);
-  const time = msg.timestamp?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
+  const time = formatMsgTime(msg.timestamp);
   const isSystem = msg.senderId === "__system__";
 
   const shouldAutoLoad = (type) => {
@@ -1173,9 +1176,23 @@ export function ChatPage() {
             </div>
 
             <div className="messages-container">
-              {messages.map((msg) => (
-                msg.isDeleted ? null : <MessageBubble key={msg.id} msg={msg} isOwn={msg.senderId === user.uid} onPreview={setPreviewItem} onLinkClick={setPendingLink} onReply={setReplyTo} settings={settings} />
-              ))}
+              <div className="encryption-banner">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                Messages are end-to-end encrypted. No one outside of this chat can read them.
+              </div>
+              {messages.reduce((acc, msg, i) => {
+                if (msg.isDeleted) return acc;
+                const prev = messages[i - 1];
+                const dayKey = getDateKey(msg.timestamp);
+                const prevDayKey = prev ? getDateKey(prev.timestamp) : null;
+                if (dayKey && dayKey !== prevDayKey) {
+                  acc.push(<div key={`sep-${msg.id}`} className="date-separator"><span className="date-separator-label">{formatDateSeparator(msg.timestamp)}</span></div>);
+                }
+                acc.push(<MessageBubble key={msg.id} msg={msg} isOwn={msg.senderId === user.uid} onPreview={setPreviewItem} onLinkClick={setPendingLink} onReply={setReplyTo} settings={settings} />);
+                return acc;
+              }, [])}
               <div ref={messagesEnd} />
             </div>
 

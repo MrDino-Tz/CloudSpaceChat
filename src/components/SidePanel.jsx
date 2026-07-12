@@ -71,7 +71,10 @@ function AddMemberModal({ conversationId, currentUserId, onClose, onMembersChang
     setAdding(true);
     try {
       await addMemberToGroup(conversationId?.id, uid);
-      await sendSystemMessage(conversationId?.id, `${users.find((u) => u.uid === uid)?.displayName || "A user"} was added to the group`);
+      const addedUser = users.find((u) => u.uid === uid);
+      const addedName = addedUser?.displayName || "A user";
+      const text = uid === currentUserId ? "You were added to the group" : `${addedName} was added to the group`;
+      await sendSystemMessage(conversationId?.id, text);
       onMembersChanged?.();
     } catch (e) {
       console.error("Failed to add member:", e);

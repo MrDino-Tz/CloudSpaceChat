@@ -2959,6 +2959,42 @@ html[data-theme="dark"] body {
   line-height: 1;
 }
 
+/* ── Date Separator ── */
+.date-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.date-separator-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--hover-bg);
+  padding: 4px 14px;
+  border-radius: 8px;
+}
+
+/* ── Encryption Banner ── */
+.encryption-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 20px 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.encryption-banner svg {
+  flex-shrink: 0;
+  color: var(--primary-color);
+}
+
 /* ── Responsive / Mobile Styles ── */
 .mobile-back-btn {
   display: none;
