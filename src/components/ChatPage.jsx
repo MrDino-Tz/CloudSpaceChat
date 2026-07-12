@@ -11,6 +11,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { GroupCreateModal } from "@/components/GroupCreateModal";
 import { getLocalSettings, applyStyleOverrides } from "@/lib/settingsService";
 import { requestNotificationPermission, sendNotification, isInDnd, playSound } from "@/lib/notificationService";
+import { incrementUnreadCount, resetUnreadCount } from "@/lib/chatService";
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -26,6 +27,7 @@ function ConversationItem({ conv, active, onClick }) {
   const hasLink = lm.content && LINK_RX.test(lm.content);
   const preview = lm.type === "image" ? "📷 Photo" : lm.type === "video" ? "🎥 Video" : lm.type === "file" ? `📎 ${lm.attachments?.[0]?.name || "File"}` : hasLink ? "🔗 Link" : lm.content || "No messages yet";
   const isOnline = otherUser?.isOnline;
+  const unread = conv.unreadCount?.[user?.uid] || 0;
 
   return (
     <div className={`chat-item ${active ? "active" : ""}`} onClick={onClick}>
@@ -45,10 +47,11 @@ function ConversationItem({ conv, active, onClick }) {
       </div>
       <div className="chat-info">
         <div className="chat-header-row">
-          <span className="chat-name">{name}</span>
+          <span className={`chat-name ${unread > 0 ? "chat-name-unread" : ""}`}>{name}</span>
+          {unread > 0 && <span className="unread-badge">{unread > 99 ? "99+" : unread}</span>}
         </div>
         <div className="chat-preview-row">
-          <span className="chat-preview">{preview}</span>
+          <span className={`chat-preview ${unread > 0 ? "chat-preview-unread" : ""}`}>{preview}</span>
         </div>
       </div>
     </div>
@@ -866,6 +869,7 @@ export function ChatPage() {
   const [showNewMenu, setShowNewMenu] = useState(false);
   const newBtnRef = useRef(null);
   const messagesEnd = useRef(null);
+  const seenKeysRef = useRef({});
 
   usePresence(user);
   const prevMsgLen = useRef(0);
@@ -904,6 +908,24 @@ export function ChatPage() {
     );
     return unsub;
   }, [user]);
+
+  useEffect(() => {
+    conversations.forEach((conv) => {
+      const lm = conv.lastMessage;
+      if (!lm || lm.senderId === user?.uid) return;
+      const key = `${conv.id}:${lm.timestamp?.toMillis?.() || 0}`;
+      if (seenKeysRef.current[key]) return;
+      seenKeysRef.current[key] = true;
+      if (conv.id !== activeConvId) {
+        incrementUnreadCount(conv.id, user.uid);
+      }
+    });
+  }, [conversations, user?.uid, activeConvId]);
+
+  useEffect(() => {
+    if (!activeConvId) return;
+    resetUnreadCount(activeConvId, user.uid);
+  }, [activeConvId, user?.uid]);
 
   useEffect(() => {
     if (!activeConvId) return;
@@ -967,6 +989,8 @@ export function ChatPage() {
 
   const avatarName = profile?.displayName || user?.email || "U";
 
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount?.[user?.uid] || 0), 0);
+
   return (
     <div className="app-window">
       <div className="sidebar">
@@ -978,9 +1002,12 @@ export function ChatPage() {
           )}
         </div>
         <div className={`nav-item ${view === "chats" ? "active" : ""}`} onClick={() => setView("chats")}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
+          <div className="nav-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            {totalUnread > 0 && <span className="nav-unread-badge">{totalUnread > 99 ? "99+" : totalUnread}</span>}
+          </div>
           <span>Chats</span>
         </div>
         <div className={`nav-item ${view === "find-people" ? "active" : ""}`} onClick={() => setView("find-people")}>

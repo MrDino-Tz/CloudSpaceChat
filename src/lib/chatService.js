@@ -1,6 +1,6 @@
 import {
   collection, doc, addDoc, getDoc, getDocs, setDoc,
-  updateDoc, query, where, orderBy, limit,
+  updateDoc, query, where, orderBy, limit, increment,
   onSnapshot, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -258,5 +258,19 @@ export async function toggleStarMessage(messageId, userId) {
     starredBy: isStarred ? current.filter((u) => u !== userId) : [...current, userId],
   });
   return !isStarred;
+}
+
+// ─── Unread Counts ──────────────────────────────────────────────────────────────
+
+export async function incrementUnreadCount(conversationId, userId) {
+  await updateDoc(doc(db, "conversations", conversationId), {
+    [`unreadCount.${userId}`]: increment(1),
+  });
+}
+
+export async function resetUnreadCount(conversationId, userId) {
+  await updateDoc(doc(db, "conversations", conversationId), {
+    [`unreadCount.${userId}`]: 0,
+  });
 }
 

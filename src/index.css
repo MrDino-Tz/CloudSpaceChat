@@ -1430,6 +1430,7 @@ html[data-theme="dark"] body {
   padding: 8px 0;
   font-size: 14px;
   outline: none;
+  color: var(--text-main);
 }
 
 .mic-btn {
@@ -2906,4 +2907,54 @@ html[data-theme="dark"] body {
 /* ── Group status dot (no online indicator for groups) ── */
 .status-group {
   background: var(--border-color);
+}
+
+/* ── Unread Badges ── */
+.chat-name-unread {
+  font-weight: 700;
+}
+
+.chat-preview-unread {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.unread-badge {
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.nav-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.nav-unread-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-white);
+  line-height: 1;
 }
