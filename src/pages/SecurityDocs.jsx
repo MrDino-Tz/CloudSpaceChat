@@ -1,162 +1,255 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+
+const sections = [
+  { id: 'what-is-e2ee', label: 'End-to-End Encryption' },
+  { id: 'faq', label: 'FAQ' },
+  { id: 'key-management', label: 'Key Management' },
+  { id: 'data-retention', label: 'Data Retention' },
+];
 
 const SecurityDocs = () => {
+  const [activeId, setActiveId] = useState(sections[0].id);
+  const ticking = useRef(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    const handleScroll = () => {
+      if (ticking.current) return;
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        const scrollY = window.scrollY + 100;
+        let current = sections[0].id;
+        for (const s of sections) {
+          const el = document.getElementById(s.id);
+          if (el && el.offsetTop <= scrollY) {
+            current = s.id;
+          }
+        }
+        setActiveId((prev) => (prev !== current ? current : prev));
+        ticking.current = false;
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const scrollTo = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: 'var(--bg-white, #ffffff)', 
-      color: 'var(--text-main, #111827)', 
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#fff',
+      color: '#202124',
+      fontFamily: '"Google Sans", Roboto, "Segoe UI", Arial, sans-serif',
+      display: 'flex',
+      flexDirection: 'column',
     }}>
-      {/* Header */}
+      <style>{`
+        .gd-content a { color: #1a73e8; text-decoration: none; }
+        .gd-content a:hover { text-decoration: underline; }
+        .gd-content h2 { font-size: 24px; font-weight: 500; margin: 48px 0 16px; color: #202124; scroll-margin-top: 80px; }
+        .gd-content h3 { font-size: 18px; font-weight: 500; margin: 32px 0 12px; color: #202124; }
+        .gd-content p { font-size: 14px; line-height: 1.7; color: #5f6368; margin: 0 0 16px; }
+        .gd-content ul, .gd-content ol { font-size: 14px; line-height: 1.7; color: #5f6368; margin: 0 0 16px; padding-left: 24px; }
+        .gd-content li { margin-bottom: 6px; }
+        .gd-content table { width: 100%; border-collapse: collapse; margin: 0 0 24px; font-size: 14px; }
+        .gd-content th { background: #f8f9fa; text-align: left; padding: 12px 16px; border-bottom: 2px solid #dadce0; font-weight: 500; color: #202124; }
+        .gd-content td { padding: 12px 16px; border-bottom: 1px solid #e8eaed; color: #5f6368; }
+        .gd-content blockquote { border-left: 4px solid #1a73e8; padding: 12px 16px; margin: 0 0 24px; background: #f8f9fa; border-radius: 0 8px 8px 0; font-size: 14px; color: #5f6368; }
+        .gd-content .note { background: #e8f0fe; border-radius: 8px; padding: 16px 20px; margin: 0 0 24px; font-size: 14px; color: #202124; border-left: 4px solid #1a73e8; }
+        @media (max-width: 768px) {
+          .docs-sidebar { display: none !important; }
+          .gd-content { padding: 24px 20px !important; }
+        }
+      `}</style>
+
       <header style={{
-        backgroundColor: 'var(--brand-dark, #111827)',
-        color: '#ffffff',
-        padding: '16px 24px',
+        background: '#fff',
+        borderBottom: '1px solid #dadce0',
+        padding: '0 24px',
+        height: 56,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link to="/" style={{ color: '#fff', display: 'flex', alignItems: 'center', textDecoration: 'none', fontWeight: 'bold', fontSize: '18px' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', color: 'var(--primary-color, #F59B1D)' }}>
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            CloudSpaceChat <span style={{ fontWeight: '400', marginLeft: '6px', opacity: 0.8 }}>Help Center</span>
-          </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ color: '#5f6368', fontSize: 14, fontWeight: 500 }}>CloudSpaceChat</span>
+          <span style={{ color: '#dadce0', fontSize: 13 }}>/</span>
+          <span style={{ color: '#1a73e8', fontSize: 14 }}>Security & End-to-End Encryption</span>
         </div>
-        <Link to="/" style={{
-          color: '#ffffff',
+        <a href="/" style={{
+          color: '#1a73e8',
+          fontSize: 13,
           textDecoration: 'none',
-          fontSize: '14px',
-          fontWeight: '500',
-          padding: '8px 16px',
-          backgroundColor: 'rgba(255,255,255,0.1)',
-          borderRadius: '20px',
-          transition: 'background 0.2s'
-        }}>
-          Return to Chat
-        </Link>
+          fontWeight: 500,
+          padding: '6px 16px',
+          borderRadius: 20,
+          border: '1px solid #dadce0',
+        }}>Return to Chat</a>
       </header>
 
-      {/* Main Content Layout */}
-      <div style={{
-        maxWidth: '1000px',
-        margin: '0 auto',
-        display: 'flex',
-        flexDirection: 'row',
-        padding: '40px 24px',
-        gap: '60px'
-      }}>
-        
-        {/* Desktop Sidebar (hidden on small screens using a media query in CSS normally, but we'll use inline flex logic) */}
+      <div style={{ display: 'flex', flex: 1 }}>
         <nav style={{
-          width: '240px',
+          width: 260,
           flexShrink: 0,
-          display: window.innerWidth <= 768 ? 'none' : 'block'
+          borderRight: '1px solid #dadce0',
+          padding: '24px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          position: 'sticky',
+          top: 56,
+          alignSelf: 'flex-start',
+          height: 'calc(100vh - 56px)',
+          overflowY: 'auto',
         }} className="docs-sidebar">
-          <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--text-secondary, #6b7280)', letterSpacing: '1px', marginBottom: '16px' }}>Topics</h4>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <li><a href="#" style={{ textDecoration: 'none', color: 'var(--text-secondary, #4b5563)', fontSize: '15px' }}>General</a></li>
-            <li><a href="#" style={{ textDecoration: 'none', color: 'var(--primary-color, #F59B1D)', fontSize: '15px', fontWeight: '600' }}>Security & Privacy</a></li>
-            <li><a href="#" style={{ textDecoration: 'none', color: 'var(--text-secondary, #4b5563)', fontSize: '15px' }}>Troubleshooting</a></li>
-            <li><a href="#" style={{ textDecoration: 'none', color: 'var(--text-secondary, #4b5563)', fontSize: '15px' }}>Account & Profile</a></li>
-          </ul>
+          <div style={{ fontSize: 11, fontWeight: 500, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 12, paddingLeft: 12 }}>
+            Security & Privacy
+          </div>
+          {sections.map((s) => {
+            const isActive = activeId === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => scrollTo(s.id)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: isActive ? 500 : 400,
+                  color: isActive ? '#1a73e8' : '#5f6368',
+                  background: isActive ? '#e8f0fe' : 'transparent',
+                  border: 'none',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {s.label}
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Article Content */}
-        <main style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '24px', color: 'var(--text-main)' }}>
+        <main className="gd-content" style={{ flex: 1, maxWidth: 800, padding: '40px 56px', minWidth: 0 }}>
+          <h1 style={{ fontSize: 36, fontWeight: 500, color: '#202124', margin: '0 0 8px', lineHeight: 1.3 }}>
             Security & End-to-End Encryption
           </h1>
-          
-          <p style={{ fontSize: '16px', lineHeight: '1.7', color: 'var(--text-secondary)', marginBottom: '32px' }}>
-            At CloudSpaceChat, your privacy and security are our top priorities. This document explains how we protect your data and what End-to-End Encryption (E2EE) means for your conversations.
+          <p style={{ fontSize: 14, color: '#5f6368', margin: '0 0 32px' }}>
+            This document explains how CloudSpaceChat protects your data and what End-to-End Encryption means for your conversations.
           </p>
 
-          <div style={{ 
-            backgroundColor: 'var(--hover-bg, #f3f4f6)', 
-            padding: '24px', 
-            borderRadius: '12px', 
-            marginBottom: '40px',
-            borderLeft: '4px solid var(--primary-color, #F59B1D)'
-          }}>
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color, #F59B1D)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              What is End-to-End Encryption?
-            </h2>
-            <p style={{ fontSize: '15px', lineHeight: '1.6', marginBottom: '16px', color: 'var(--text-main)' }}>
-              End-to-End Encryption ensures that only you and the person you're communicating with can read or listen to what is sent. Nobody in between, not even CloudSpaceChat, can decipher your messages, calls, photos, or documents.
-            </p>
-            <p style={{ fontSize: '15px', lineHeight: '1.6', color: 'var(--text-main)', margin: 0 }}>
-              Your messages are secured with a lock, and only the recipient and you have the special key needed to unlock and read them. All of this happens automatically—there is no need to turn on any special settings to secure your messages.
-            </p>
+          <div className="note">
+            <strong style={{ fontSize: 14 }}>Page Summary</strong>
+            <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 14, color: '#202124', lineHeight: 1.6 }}>
+              <li>End-to-End Encryption ensures only you and the recipient can read your messages.</li>
+              <li>Encryption keys are stored locally on your devices, not on our servers.</li>
+              <li>Group chats, media files, and calls are all protected by E2EE.</li>
+            </ul>
           </div>
 
-          <h3 style={{ fontSize: '22px', fontWeight: '600', borderBottom: '1px solid var(--border-color, #e5e7eb)', paddingBottom: '12px', marginBottom: '24px' }}>
-            Frequently Asked Questions
-          </h3>
+          <h2 id="what-is-e2ee">What is End-to-End Encryption?</h2>
+          <p>
+            End-to-End Encryption (E2EE) is a security method that ensures only the communicating users can read the messages.
+            No third party, not even CloudSpaceChat, has access to the decryption keys needed to read the messages.
+          </p>
+          <p>
+            When you send a message, it is encrypted on your device with a unique key. The encrypted message travels through our servers,
+            but only the recipient's device has the corresponding key to decrypt and read it. This all happens automatically&mdash;no settings to toggle.
+          </p>
 
-          <div style={{ marginBottom: '32px' }}>
-            <h4 style={{ fontSize: '17px', fontWeight: '600', marginBottom: '12px' }}>Does CloudSpaceChat store my messages?</h4>
-            <p style={{ fontSize: '15px', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
-              Messages are stored securely. E2EE ensures that even if our servers were compromised, the contents of the messages remain completely unreadable without the specific decryption keys stored only on your local device.
-            </p>
+          <blockquote>
+            <strong>Note:</strong> E2EE protects messages in transit and at rest. Even if our servers were compromised, your
+            message contents remain unreadable without the decryption keys stored only on your device.
+          </blockquote>
+
+          <h2 id="faq">Frequently Asked Questions</h2>
+
+          <h3>Does CloudSpaceChat store my messages?</h3>
+          <p>
+            Messages are stored on our servers in encrypted form. The encryption keys needed to read them exist only on the
+            sender's and recipient's devices. This means we cannot read your messages even if we wanted to.
+          </p>
+
+          <h3>Are group chats encrypted?</h3>
+          <p>
+            Yes. Group chats use the same encryption protocols. Each participant has a unique key that allows them to
+            decrypt messages, ensuring privacy among all group members.
+          </p>
+
+          <h3>What about media files?</h3>
+          <p>
+            Photos, videos, voice notes, and documents are encrypted using E2EE before they leave your device. They remain
+            encrypted during transmission and while stored on our servers.
+          </p>
+
+          <h2 id="key-management">Key Management</h2>
+          <p>
+            Encryption keys are generated and stored locally on each device. When you sign in on a new device,
+            the keys are securely shared between your devices using CloudSpaceChat's key exchange protocol.
+          </p>
+          <p>If you lose all your devices, you can regenerate your keys, but old messages encrypted with previous keys will not be recoverable.</p>
+
+          <div className="note">
+            For security reasons, CloudSpaceChat does not have access to your encryption keys.
+            We cannot recover messages if you lose your devices without a backup.
           </div>
 
-          <div style={{ marginBottom: '32px' }}>
-            <h4 style={{ fontSize: '17px', fontWeight: '600', marginBottom: '12px' }}>Are group chats encrypted?</h4>
-            <p style={{ fontSize: '15px', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
-              Yes. Group chats use the same robust encryption protocols. Every participant in the group receives a unique key that allows them to read the messages, ensuring privacy among all members.
-            </p>
-          </div>
+          <h2 id="data-retention">Data Retention</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Data Type</th>
+                <th>Retention</th>
+                <th>Encrypted</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Messages</td><td>Until deleted by user</td><td>E2EE</td></tr>
+              <tr><td>Media files</td><td>Until deleted by user</td><td>E2EE</td></tr>
+              <tr><td>Account info</td><td>Until account deletion</td><td>TLS in transit</td></tr>
+              <tr><td>Metadata</td><td>90 days</td><td>TLS in transit</td></tr>
+            </tbody>
+          </table>
 
-          <div style={{ marginBottom: '40px' }}>
-            <h4 style={{ fontSize: '17px', fontWeight: '600', marginBottom: '12px' }}>What about my media files?</h4>
-            <p style={{ fontSize: '15px', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
-              Photos, videos, voice notes, and documents are encrypted using the same end-to-end encryption protocols before they leave your device.
-            </p>
-          </div>
+          <p>
+            You can delete your messages, media, or entire account at any time through the app settings.
+            When you delete a message, it is purged from our servers within 30 days.
+          </p>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '48px', paddingTop: '32px', borderTop: '1px solid var(--border-color)' }}>
-            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Was this article helpful?</span>
-            <button style={{ background: 'var(--hover-bg)', border: '1px solid var(--border-color)', padding: '6px 16px', borderRadius: '16px', cursor: 'pointer', fontWeight: '500', color: 'var(--text-main)' }}>Yes</button>
-            <button style={{ background: 'var(--hover-bg)', border: '1px solid var(--border-color)', padding: '6px 16px', borderRadius: '16px', cursor: 'pointer', fontWeight: '500', color: 'var(--text-main)' }}>No</button>
-          </div>
+          <hr style={{ border: 'none', borderTop: '1px solid #dadce0', margin: '48px 0 24px' }} />
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span style={{ fontSize: 14, color: '#5f6368' }}>Was this article helpful?</span>
+            <button style={{
+              background: '#fff', border: '1px solid #dadce0', padding: '6px 20px',
+              borderRadius: 20, cursor: 'pointer', fontSize: 14, color: '#202124',
+            }}>Yes</button>
+            <button style={{
+              background: '#fff', border: '1px solid #dadce0', padding: '6px 20px',
+              borderRadius: 20, cursor: 'pointer', fontSize: 14, color: '#202124',
+            }}>No</button>
+          </div>
         </main>
       </div>
-      
-      {/* Footer */}
+
       <footer style={{
-        backgroundColor: 'var(--hover-bg, #f9fafb)',
-        borderTop: '1px solid var(--border-color, #e5e7eb)',
-        padding: '32px 24px',
-        textAlign: 'center',
-        marginTop: 'auto'
+        background: '#f8f9fa', borderTop: '1px solid #dadce0',
+        padding: '24px', textAlign: 'center',
       }}>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+        <p style={{ fontSize: 12, color: '#80868b', margin: 0 }}>
           &copy; {new Date().getFullYear()} CloudSpaceChat. All rights reserved.
         </p>
       </footer>
-      
-      {/* Hide sidebar natively on mobile via global CSS block */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @media (max-width: 768px) {
-          .docs-sidebar { display: none !important; }
-        }
-      `}} />
     </div>
   );
 };
