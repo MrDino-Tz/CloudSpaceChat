@@ -1630,7 +1630,8 @@ html[data-theme="dark"] body {
   width: 90%;
   max-width: 440px;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
 }
 
@@ -1666,6 +1667,9 @@ html[data-theme="dark"] body {
 
 .modal-body {
   padding: 20px 24px 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .modal-box {
