@@ -187,12 +187,24 @@ function EditGroupModal({ conversation, onClose, onUpdated }) {
     if (!name.trim() || saving) return;
     setSaving(true);
     try {
+      const changes = [];
+      const orig = conversation;
+      if (name.trim() !== orig.name) changes.push(`Group name changed to "${name.trim()}"`);
+      if (desc.trim() !== (orig.description || "")) changes.push("Group description updated");
+      if (rules.trim() !== (orig.rules || "")) changes.push("Group rules updated");
+      if ((avatar || "") !== (orig.avatar || "")) changes.push("Group photo updated");
+
       await updateGroupInfo(conversation.id, {
         name: name.trim(),
         description: desc.trim(),
         rules: rules.trim(),
         avatar: avatar || "",
       });
+
+      for (const msg of changes) {
+        await sendSystemMessage(conversation.id, msg);
+      }
+
       onUpdated?.();
       onClose();
     } catch (e) {

@@ -2594,11 +2594,16 @@ html[data-theme="dark"] body {
   align-items: center;
   justify-content: center;
   position: relative;
+  margin-left: -5px;
   z-index: 0;
 }
 
 .member-row:hover {
   z-index: 2;
+}
+
+.member-row:first-child {
+  margin-left: 0;
 }
 
 .member-row .member-avatar-wrapper .member-avatar {
@@ -2660,7 +2665,8 @@ html[data-theme="dark"] body {
 
 .member-rows-list {
   display: flex;
-  padding: 8px 0 4px 10px;
+  gap: 4px;
+  padding: 8px 0 4px;
 }
 
 /* ── Group About Card ── */
