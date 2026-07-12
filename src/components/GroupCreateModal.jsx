@@ -11,10 +11,11 @@ export function GroupCreateModal({ onClose, onCreated }) {
   const [selected, setSelected] = useState([]);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
   const inputRef = useRef(null);
 
   useEffect(() => {
-    getAllUsers(user.uid).then(setUsers).catch(() => {});
+    getAllUsers(user.uid).then(setUsers).catch(() => setError("Failed to load users"));
     inputRef.current?.focus();
   }, [user.uid]);
 
@@ -45,7 +46,7 @@ export function GroupCreateModal({ onClose, onCreated }) {
       onCreated(convId);
       onClose();
     } catch (err) {
-      console.error("Failed to create group:", err);
+      setError(err.message || "Failed to create group");
     } finally {
       setCreating(false);
     }
@@ -70,6 +71,7 @@ export function GroupCreateModal({ onClose, onCreated }) {
         </div>
 
         <div className="modal-body">
+          {error && <p className="form-error">{error}</p>}
           <div className="form-group">
             <label className="form-label">Group Name</label>
             <input

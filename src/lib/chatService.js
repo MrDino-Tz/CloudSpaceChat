@@ -176,6 +176,78 @@ export async function editMessage(messageId, newContent) {
   });
 }
 
+// ─── Group Management ────────────────────────────────────────────────────────
+
+export async function addMemberToGroup(conversationId, newUserId) {
+  const ref = doc(db, "conversations", conversationId);
+  const snap = await getDoc(ref);
+  const participants = snap.data()?.participants || [];
+  if (participants.includes(newUserId)) return;
+  await updateDoc(ref, {
+    participants: [...participants, newUserId],
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function removeMemberFromGroup(conversationId, userId) {
+  const ref = doc(db, "conversations", conversationId);
+  const snap = await getDoc(ref);
+  const data = snap.data();
+  const participants = (data?.participants || []).filter((p) => p !== userId);
+  const admins = (data?.admins || []).filter((a) => a !== userId);
+  const update = { participants, updatedAt: serverTimestamp() };
+  if (admins.length !== (data?.admins || []).length) update.admins = admins;
+  await updateDoc(ref, update);
+}
+
+export async function leaveGroup(conversationId, userId) {
+  await removeMemberFromGroup(conversationId, userId);
+}
+
+export async function deleteGroup(conversationId) {
+  await updateDoc(doc(db, "conversations", conversationId), {
+    isDeleted: true,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateGroupInfo(conversationId, data) {
+  const update = { updatedAt: serverTimestamp() };
+  if (data.name !== undefined) update.name = data.name;
+  if (data.description !== undefined) update.description = data.description;
+  if (data.avatar !== undefined) update.avatar = data.avatar;
+  await updateDoc(doc(db, "conversations", conversationId), update);
+}
+
+export async function toggleAdmin(conversationId, targetUserId) {
+  const ref = doc(db, "conversations", conversationId);
+  const snap = await getDoc(ref);
+  const admins = snap.data()?.admins || [];
+  const isAdmin = admins.includes(targetUserId);
+  await updateDoc(ref, {
+    admins: isAdmin ? admins.filter((a) => a !== targetUserId) : [...admins, targetUserId],
+    updatedAt: serverTimestamp(),
+  });
+  return !isAdmin;
+}
+
+export async function sendSystemMessage(conversationId, content) {
+  await addDoc(collection(db, "messages"), {
+    conversationId,
+    senderId: "__system__",
+    content,
+    type: "system",
+    timestamp: serverTimestamp(),
+    readBy: [],
+    deliveredTo: [],
+    isDeleted: false,
+  });
+  await updateDoc(doc(db, "conversations", conversationId), {
+    lastMessage: { content, senderId: "__system__", timestamp: serverTimestamp(), type: "system" },
+    updatedAt: serverTimestamp(),
+  });
+}
+
 /** Toggle star on a message for a user */
 export async function toggleStarMessage(messageId, userId) {
   const ref = doc(db, "messages", messageId);

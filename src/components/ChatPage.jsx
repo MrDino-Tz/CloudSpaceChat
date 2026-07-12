@@ -30,12 +30,18 @@ function ConversationItem({ conv, active, onClick }) {
   return (
     <div className={`chat-item ${active ? "active" : ""}`} onClick={onClick}>
       <div className="chat-avatar-container">
-        {otherUser?.avatar ? (
+        {conv.type === "group" ? (
+          conv.avatar ? (
+            <img className="chat-avatar" src={conv.avatar} alt="" style={{ objectFit: "cover" }} />
+          ) : (
+            <div className="chat-avatar chat-avatar-letter">{getAvatarFallback(conv.name)}</div>
+          )
+        ) : otherUser?.avatar ? (
           <img className="chat-avatar" src={getAvatarUrl(otherUser)} alt="" />
         ) : (
           <div className="chat-avatar chat-avatar-letter">{getAvatarFallback(name)}</div>
         )}
-        <div className={`status-dot ${isOnline ? "status-online" : "status-offline"}`} />
+        <div className={`status-dot ${conv.type === "group" ? "status-group" : isOnline ? "status-online" : "status-offline"}`} />
       </div>
       <div className="chat-info">
         <div className="chat-header-row">
@@ -384,11 +390,12 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
   const { user, profile } = useAuth();
   const [sender, setSender] = useState(null);
   const [loadedMedia, setLoadedMedia] = useState({});
-  const [ctxMenu, setCtxMenu] = useState(null); // { x, y }
+  const [ctxMenu, setCtxMenu] = useState(null);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.content || "");
   const [starred, setStarred] = useState(msg.starredBy?.includes(user?.uid) || false);
   const time = msg.timestamp?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
+  const isSystem = msg.senderId === "__system__";
 
   const shouldAutoLoad = (type) => {
     if (!settings) return true;
@@ -401,8 +408,16 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
   const loadMedia = (i) => setLoadedMedia((prev) => ({ ...prev, [i]: true }));
 
   useEffect(() => {
-    if (!isOwn) getUserProfile(msg.senderId).then(setSender);
-  }, [msg.senderId, isOwn]);
+    if (!isOwn && !isSystem) getUserProfile(msg.senderId).then(setSender);
+  }, [msg.senderId, isOwn, isSystem]);
+
+  if (isSystem) {
+    return (
+      <div className="message-wrapper system-message-wrapper">
+        <div className="system-message">{msg.content}</div>
+      </div>
+    );
+  }
 
   const openCtx = (e) => {
     e.preventDefault();
@@ -1088,6 +1103,8 @@ export function ChatPage() {
                   </div>
                 ) : activeConv?.type === "group" && activeConv.avatar ? (
                   <img className="chat-avatar" src={activeConv.avatar} alt="" style={{ width: 40, height: 40 }} />
+                ) : activeConv?.type === "group" && activeConv.avatar ? (
+                  <img className="chat-avatar" src={activeConv.avatar} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: "50%" }} />
                 ) : activeConv?.type === "group" ? (
                   <div className="chat-avatar chat-avatar-letter" style={{ width: 40, height: 40, fontSize: 16 }}>
                     {getAvatarFallback(activeConv.name)}
@@ -1145,6 +1162,9 @@ export function ChatPage() {
           conversation={activeConv}
           currentUserId={user?.uid}
           onClose={() => setShowSidePanel(false)}
+          onConversationUpdated={() => {
+            if (activeConvId) getConversation(activeConvId).then(setActiveConv);
+          }}
         />
       </div>
 
