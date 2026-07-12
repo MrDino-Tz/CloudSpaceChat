@@ -263,6 +263,8 @@ function CredsModal({ onClose }) {
 }
 
 // ─── Main Auth Page ───────────────────────────────────────────────────────────
+const LAST_USED_KEY = 'csc_last_auth';
+
 export function AuthPage() {
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState('');
@@ -270,6 +272,7 @@ export function AuthPage() {
     const s = getLocalSettings();
     return s.theme === 'dark';
   });
+  const [lastUsed, setLastUsed] = useState(() => localStorage.getItem(LAST_USED_KEY) || '');
 
   const toggleTheme = () => {
     const next = isDark ? 'light' : 'dark';
@@ -280,10 +283,16 @@ export function AuthPage() {
     saveLocalSettings(s);
   };
 
+  const saveLastUsed = (provider) => {
+    localStorage.setItem(LAST_USED_KEY, provider);
+    setLastUsed(provider);
+  };
+
   const signInWithGoogle = async () => {
     try {
       setError('');
       await signInWithPopup(auth, new GoogleAuthProvider());
+      saveLastUsed('google');
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError(err.message.replace('Firebase: ', ''));
@@ -295,12 +304,18 @@ export function AuthPage() {
     try {
       setError('');
       await signInWithPopup(auth, new GithubAuthProvider());
+      saveLastUsed('github');
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError(err.message.replace('Firebase: ', ''));
       }
     }
   };
+
+  const providers = [
+    { id: 'google', label: 'Continue with Google', icon: GoogleIcon, onClick: signInWithGoogle },
+    { id: 'github', label: 'Continue with GitHub', icon: GithubIcon, onClick: signInWithGithub },
+  ].sort((a, b) => (a.id === lastUsed ? -1 : b.id === lastUsed ? 1 : 0));
 
   return (
     <div className="auth-root">
@@ -338,14 +353,17 @@ export function AuthPage() {
 
           {/* OAuth Buttons */}
           <div className="auth-buttons">
-            <button className="auth-btn" type="button" onClick={signInWithGoogle}>
-              <GoogleIcon style={{ width: 16, height: 16 }} />
-              Continue with Google
-            </button>
-            <button className="auth-btn" type="button" onClick={signInWithGithub}>
-              <GithubIcon style={{ width: 16, height: 16 }} />
-              Continue with GitHub
-            </button>
+            {providers.map((p) => {
+              const Icon = p.icon;
+              const isLast = p.id === lastUsed;
+              return (
+                <button key={p.id} className="auth-btn" type="button" onClick={p.onClick}>
+                  <Icon style={{ width: 16, height: 16 }} />
+                  {p.label}
+                  {isLast && <span className="auth-last-badge">Last used</span>}
+                </button>
+              );
+            })}
           </div>
 
           {/* Divider */}
