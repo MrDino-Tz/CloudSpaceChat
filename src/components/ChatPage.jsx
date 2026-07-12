@@ -12,7 +12,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { GroupCreateModal } from "@/components/GroupCreateModal";
 import { getLocalSettings, applyStyleOverrides } from "@/lib/settingsService";
 import { requestNotificationPermission, sendNotification, isInDnd, playSound } from "@/lib/notificationService";
-import { incrementUnreadCount, resetUnreadCount } from "@/lib/chatService";
+import { incrementUnreadCount, resetUnreadCount, markMessagesAsReadFromList } from "@/lib/chatService";
 import { formatMsgTime, formatConvTime, formatDateSeparator, getDateKey } from "@/lib/time";
 
 function ConversationItem({ conv, active, onClick }) {
@@ -170,12 +170,33 @@ function renderContent(text, onLinkClick, settings) {
   });
 }
 
-const CheckTicks = ({ read, incognito }) => {
-  const showRead = !incognito && read;
+const CheckTicks = ({ delivered, read, incognito }) => {
+  if (incognito) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+        <polyline points="18 6 11 15 7 11" />
+      </svg>
+    );
+  }
+  if (read) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+        <polyline points="18 6 11 15 7 11" />
+        <polyline points="22 6 15 15 13 13" />
+      </svg>
+    );
+  }
+  if (delivered) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+        <polyline points="18 6 11 15 7 11" />
+        <polyline points="22 6 15 15 13 13" />
+      </svg>
+    );
+  }
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showRead ? "#3b82f6" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
       <polyline points="18 6 11 15 7 11" />
-      {showRead && <polyline points="22 6 15 15 13 13" />}
     </svg>
   );
 };
@@ -566,7 +587,7 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
         <div className="message-meta">
           {starred && <span className="msg-star-indicator">★</span>}
           <span>{time}</span>
-          {isOwn && <CheckTicks read={msg.readBy?.length > 1} incognito={settings?.incognito} />}
+          {isOwn && <CheckTicks delivered={msg.deliveredTo?.length > 1} read={msg.readBy?.length > 1} incognito={settings?.incognito} />}
         </div>
       </div>
 
@@ -932,6 +953,8 @@ export function ChatPage() {
     resetUnreadCount(activeConvId, user.uid);
   }, [activeConvId, user?.uid]);
 
+  const markedConvRef = useRef(null);
+
   useEffect(() => {
     if (!activeConvId) return;
     setRecipient(null);
@@ -943,8 +966,19 @@ export function ChatPage() {
       }
     });
     const unsub = listenToMessages(activeConvId, setMessages);
+    markedConvRef.current = null;
     return unsub;
   }, [activeConvId, user.uid]);
+
+  useEffect(() => {
+    if (!activeConvId || !messages.length) return;
+    if (markedConvRef.current === activeConvId) return;
+    const unmarked = messages.filter(
+      (m) => m.senderId !== user.uid && !(m.readBy || []).includes(user.uid),
+    );
+    if (unmarked.length > 0) markMessagesAsReadFromList(unmarked, user.uid);
+    markedConvRef.current = activeConvId;
+  }, [activeConvId, messages, user.uid]);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });

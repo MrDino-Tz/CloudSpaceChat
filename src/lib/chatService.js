@@ -1,7 +1,7 @@
 import {
   collection, doc, addDoc, getDoc, getDocs, setDoc,
   updateDoc, query, where, orderBy, limit, increment,
-  onSnapshot, serverTimestamp,
+  onSnapshot, serverTimestamp, arrayUnion, writeBatch,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -273,5 +273,19 @@ export async function resetUnreadCount(conversationId, userId) {
   await updateDoc(doc(db, "conversations", conversationId), {
     [`unreadCount.${userId}`]: 0,
   });
+}
+
+export async function markMessagesAsReadFromList(messages, userId) {
+  let batch = writeBatch(db);
+  let ops = 0;
+  messages.forEach((msg) => {
+    batch.update(doc(db, "messages", msg.id), {
+      deliveredTo: arrayUnion(userId),
+      readBy: arrayUnion(userId),
+    });
+    ops++;
+    if (ops >= 400) { batch.commit(); batch = writeBatch(db); ops = 0; }
+  });
+  if (ops > 0) await batch.commit();
 }
 
