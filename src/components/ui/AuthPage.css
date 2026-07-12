@@ -159,12 +159,12 @@
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.15s, opacity 0.15s;
-  background-color: #111827;
+  background-color: var(--brand-dark);
   color: #fff;
 }
 
 .auth-btn:hover {
-  background-color: #1f2937;
+  opacity: 0.85;
 }
 
 .auth-divider {
@@ -240,7 +240,8 @@
 }
 
 .modal-box {
-  background: #fff;
+  background: var(--bg-white);
+  color: var(--text-main);
   border-radius: 8px;
   width: 100%;
   max-width: 400px;
@@ -265,20 +266,20 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #111827;
+  color: var(--text-main);
 }
 
 .modal-brand {
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-main);
 }
 
 .modal-close-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--icon-color);
   padding: 4px;
   border-radius: 8px;
   display: flex;
@@ -288,8 +289,8 @@
 }
 
 .modal-close-btn:hover {
-  color: #374151;
-  background-color: #f3f4f6;
+  color: var(--text-main);
+  background-color: var(--hover-bg);
 }
 
 .modal-body {
@@ -299,13 +300,13 @@
 .modal-heading {
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-main);
   margin: 0 0 4px;
 }
 
 .modal-sub {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0 0 24px;
 }
 
@@ -324,26 +325,26 @@
 .form-label {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .form-input {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 14px;
-  color: #111827;
-  background: #f9fafb;
+  color: var(--text-main);
+  background: var(--hover-bg);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
   box-sizing: border-box;
 }
 
 .form-input:focus {
-  border-color: #111827;
-  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
-  background: #fff;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(245, 155, 29, 0.12);
+  background: var(--bg-white);
 }
 
 .input-with-icon {
@@ -362,7 +363,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--icon-color);
   display: flex;
   align-items: center;
   padding: 0;
@@ -370,7 +371,7 @@
 }
 
 .eye-btn:hover {
-  color: #374151;
+  color: var(--text-main);
 }
 
 .modal-submit-btn {
@@ -384,5 +385,10 @@
   padding: 8px 12px;
   border-radius: 8px;
   margin-bottom: 8px;
+}
+
+html[data-theme="dark"] .form-error {
+  background: #3b1111;
+  color: #fca5a5;
 }
 

@@ -244,6 +244,141 @@ function MessageContextMenu({ isOwn, isStarred, onReply, onCopy, onStar, onEdit,
   );
 }
 
+function MessageInfoModal({ msg, onClose }) {
+  const [readUsers, setReadUsers] = useState([]);
+  const [deliveredUsers, setDeliveredUsers] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      if (msg.readBy?.length) {
+        const profiles = await Promise.all(msg.readBy.map((uid) => getUserProfile(uid)));
+        setReadUsers(profiles.filter(Boolean));
+      }
+      if (msg.deliveredTo?.length) {
+        const profiles = await Promise.all(msg.deliveredTo.map((uid) => getUserProfile(uid)));
+        setDeliveredUsers(profiles.filter(Boolean));
+      }
+    })();
+  }, [msg]);
+
+  const sentDate = msg.timestamp?.toDate?.();
+  const sentFull = sentDate
+    ? sentDate.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
+    : "—";
+  const editedDate = msg.edited?.toDate?.() || (msg.edited instanceof Date ? msg.edited : null);
+  const editedFull = editedDate
+    ? editedDate.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
+    : null;
+
+  const msgType = msg.attachments?.length
+    ? msg.attachments.map((a) => a.type).join(", ")
+    : "text";
+  const charCount = msg.content?.length || 0;
+
+  const handleBackdrop = (e) => { if (e.target === e.currentTarget) onClose(); };
+
+  return (
+    <div className="modal-backdrop" onClick={handleBackdrop}>
+      <div className="modal-box msg-info-modal">
+        <div className="modal-header">
+          <div className="modal-title-row">
+            <span className="modal-brand">Message Info</span>
+          </div>
+          <button className="modal-close-btn" onClick={onClose} aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="modal-body">
+          {/* Message preview */}
+          <div className="msg-info-preview">
+            <div className="msg-info-preview-text">
+              {msg.content || (msg.attachments?.length ? `[${msgType}]` : "—")}
+            </div>
+          </div>
+
+          {/* Details grid */}
+          <div className="msg-info-details">
+            <div className="msg-info-row">
+              <span className="msg-info-label">Sent</span>
+              <span className="msg-info-value">{sentFull}</span>
+            </div>
+            {editedFull && (
+              <div className="msg-info-row">
+                <span className="msg-info-label">Edited</span>
+                <span className="msg-info-value">{editedFull}</span>
+              </div>
+            )}
+            <div className="msg-info-row">
+              <span className="msg-info-label">Type</span>
+              <span className="msg-info-value msg-info-badge">{msgType}</span>
+            </div>
+            <div className="msg-info-row">
+              <span className="msg-info-label">Characters</span>
+              <span className="msg-info-value">{charCount}</span>
+            </div>
+            {msg.starredBy?.length > 0 && (
+              <div className="msg-info-row">
+                <span className="msg-info-label">Starred by</span>
+                <span className="msg-info-value">{msg.starredBy.length} user(s)</span>
+              </div>
+            )}
+          </div>
+
+          {/* Read by section */}
+          <div className="msg-info-section">
+            <div className="msg-info-section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Read by · {readUsers.length}
+            </div>
+            {readUsers.length === 0 ? (
+              <div className="msg-info-empty">No read receipts yet</div>
+            ) : (
+              <div className="msg-info-user-list">
+                {readUsers.map((u) => (
+                  <div key={u.uid} className="msg-info-user">
+                    {u.avatar ? (
+                      <img className="msg-info-user-avatar" src={u.avatar} alt="" />
+                    ) : (
+                      <div className="msg-info-user-avatar msg-info-user-letter">{getAvatarFallback(u.displayName)}</div>
+                    )}
+                    <div className="msg-info-user-name">{u.displayName || "User"}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Delivered to section */}
+          <div className="msg-info-section">
+            <div className="msg-info-section-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Delivered to · {deliveredUsers.length}
+            </div>
+            {deliveredUsers.length === 0 ? (
+              <div className="msg-info-empty">No delivery info</div>
+            ) : (
+              <div className="msg-info-user-list">
+                {deliveredUsers.map((u) => (
+                  <div key={u.uid} className="msg-info-user">
+                    {u.avatar ? (
+                      <img className="msg-info-user-avatar" src={u.avatar} alt="" />
+                    ) : (
+                      <div className="msg-info-user-avatar msg-info-user-letter">{getAvatarFallback(u.displayName)}</div>
+                    )}
+                    <div className="msg-info-user-name">{u.displayName || "User"}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }) {
   const { user, profile } = useAuth();
@@ -429,6 +564,8 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
           onClose={() => setCtxMenu(null)}
         />
       )}
+
+      {showInfo && <MessageInfoModal msg={msg} onClose={() => setShowInfo(false)} />}
     </div>
   );
 }

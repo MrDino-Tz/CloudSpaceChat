@@ -139,7 +139,7 @@ export function GroupCreateModal({ onClose, onCreated }) {
           </div>
 
           <button
-            className="auth-btn modal-submit-btn"
+            className="group-create-btn"
             onClick={handleCreate}
             disabled={creating || !name.trim() || selected.length === 0}
             style={{ marginTop: 12 }}
