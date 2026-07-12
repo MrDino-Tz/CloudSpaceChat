@@ -180,7 +180,7 @@ function CredsModal({ onClose }) {
         <div className="modal-header">
           <div className="modal-title-row">
             <GridIcon style={{ width: 20, height: 20 }} />
-            <span className="modal-brand">CloudSpace</span>
+            <span className="modal-brand">CloudSpaceChat</span>
           </div>
           <button className="modal-close-btn" onClick={onClose} aria-label="Close">
             <XIcon style={{ width: 18, height: 18 }} />
@@ -289,14 +289,14 @@ export function AuthPage() {
         <div className="auth-card">
           {/* Brand */}
           <div className="auth-brand">
-            <GridIcon className="auth-brand-icon" />
-            <p className="auth-brand-name">CloudSpace</p>
+            <img src={`${import.meta.env.BASE_URL}csclogo.png`} alt="CloudSpaceChat" className="auth-logo" />
+            <p className="auth-brand-name">CloudSpaceChat</p>
           </div>
 
           {/* Heading */}
           <div className="auth-heading">
             <h1>Sign In or Join Now!</h1>
-            <p>login or create your CloudSpace account.</p>
+            <p>login or create your CloudSpaceChat account.</p>
           </div>
 
           {error && <p className="form-error">{error}</p>}

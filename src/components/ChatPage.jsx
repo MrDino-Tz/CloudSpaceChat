@@ -484,7 +484,7 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
     if (window.confirm("Delete this message for everyone?")) deleteMessageForEveryone(msg.id);
   };
 
-  const handleReport = () => window.alert("Message reported. Thank you for keeping CloudSpace safe.");
+  const handleReport = () => window.alert("Message reported. Thank you for keeping CloudSpaceChat safe.");
   const handleInfo = () => setShowInfo(true);
 
   return (
