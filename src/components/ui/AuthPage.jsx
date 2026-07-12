@@ -198,7 +198,7 @@ function CredsModal({ onClose }) {
       <div className="modal-box" role="dialog" aria-modal="true">
         <div className="modal-header">
           <div className="modal-title-row">
-            <GridIcon style={{ width: 20, height: 20 }} />
+            <img src={`${import.meta.env.BASE_URL}csclogo.png`} alt="CloudSpaceChat" style={{ width: 20, height: 20, objectFit: 'contain' }} />
             <span className="modal-brand">CloudSpaceChat</span>
           </div>
           <button className="modal-close-btn" onClick={onClose} aria-label="Close">
@@ -317,9 +317,8 @@ export function AuthPage() {
       </div>
 
       <div className="auth-container">
-        <Link to="/" className="auth-back-btn">
+        <Link to="/" className="auth-back-btn" aria-label="Back to home">
           <ChevronLeft style={{ width: 16, height: 16 }} />
-          Home
         </Link>
 
         <button className="auth-theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
