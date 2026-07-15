@@ -886,6 +886,7 @@ export function ChatPage() {
   const [searching, setSearching] = useState(false);
   const [actionError, setActionError] = useState("");
   const [recipient, setRecipient] = useState(null);
+  const [convNameMap, setConvNameMap] = useState({});
   const [startingChat, setStartingChat] = useState(false);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
@@ -948,6 +949,29 @@ export function ChatPage() {
     );
     return unsub;
   }, [user]);
+
+  const fetchedNamesRef = useRef(new Set());
+  useEffect(() => {
+    if (!user || conversations.length === 0) return;
+    const toFetch = [];
+    conversations.forEach((conv) => {
+      if (conv.type === "private") {
+        const other = conv.participants?.find((p) => p !== user.uid);
+        if (other && !fetchedNamesRef.current.has(other)) {
+          fetchedNamesRef.current.add(other);
+          toFetch.push(other);
+        }
+      }
+    });
+    if (toFetch.length === 0) return;
+    Promise.all(toFetch.map((uid) => getUserProfile(uid))).then((profiles) => {
+      setConvNameMap((prev) => {
+        const next = { ...prev };
+        profiles.forEach((p) => { if (p) next[p.uid] = p.displayName || "User"; });
+        return next;
+      });
+    });
+  }, [conversations, user]);
 
   useEffect(() => {
     conversations.forEach((conv) => {
@@ -1341,15 +1365,31 @@ export function ChatPage() {
         )}
         <div className="chat-list">
           {view === "chats" ? (
-            conversations.length === 0 ? (
-              <div style={{ padding: "20px", textAlign: "center", color: "var(--text-secondary)", fontSize: 14 }}>
-                No conversations yet. Use <strong>Find People</strong> to start one.
-              </div>
-            ) : (
-              conversations.map((conv) => (
-                <ConversationItem key={conv.id} conv={conv} active={conv.id === activeConvId} onClick={() => setActiveConvId(conv.id)} />
-              ))
-            )
+            (() => {
+              const q = searchTerm.trim().toLowerCase();
+              const filtered = q
+                ? conversations.filter((conv) => {
+                    if (conv.type === "group" && conv.name?.toLowerCase().includes(q)) return true;
+                    if (conv.lastMessage?.content?.toLowerCase().includes(q)) return true;
+                    if (conv.type === "private") {
+                      const other = conv.participants?.find((p) => p !== user.uid);
+                      if (other && convNameMap[other]?.toLowerCase().includes(q)) return true;
+                    }
+                    return false;
+                  })
+                : conversations;
+              return filtered.length === 0 ? (
+                <div style={{ padding: "20px", textAlign: "center", color: "var(--text-secondary)", fontSize: 14 }}>
+                  {conversations.length === 0
+                    ? <>No conversations yet. Use <strong>Find People</strong> to start one.</>
+                    : <>No chats matching "{searchTerm}"</>}
+                </div>
+              ) : (
+                filtered.map((conv) => (
+                  <ConversationItem key={conv.id} conv={conv} active={conv.id === activeConvId} onClick={() => setActiveConvId(conv.id)} />
+                ))
+              );
+            })()
           ) : searching ? (
             <div style={{ padding: "20px", textAlign: "center", color: "var(--text-secondary)", fontSize: 14 }}>
               Searching...
