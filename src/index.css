@@ -207,6 +207,7 @@ html[data-theme="dark"] body {
   border: none;
   border-radius: 8px;
   background-color: var(--hover-bg);
+  color: var(--text-main);
   font-size: 14px;
   outline: none;
 }
@@ -260,7 +261,7 @@ html[data-theme="dark"] body {
 }
 
 .status-online { background-color: #22c55e; }
-.status-offline { background-color: #d1d5db; }
+.status-offline { background-color: var(--border-color); }
 
 .chat-info {
   flex-grow: 1;

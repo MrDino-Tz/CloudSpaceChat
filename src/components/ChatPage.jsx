@@ -69,13 +69,13 @@ const FILE_EXT_COLORS = {
   pdf: { bg: "#fee2e2", color: "#dc2626" },
   ppt: { bg: "#ffedd5", color: "#ea580c" }, pptx: { bg: "#ffedd5", color: "#ea580c" },
   svg: { bg: "#f3e8ff", color: "#9333ea" },
-  zip: { bg: "#f3f4f6", color: "#6b7280" }, rar: { bg: "#f3f4f6", color: "#6b7280" },
-  txt: { bg: "#f3f4f6", color: "#6b7280" },
+  zip: { bg: "var(--hover-bg)", color: "var(--icon-color)" }, rar: { bg: "var(--hover-bg)", color: "var(--icon-color)" },
+  txt: { bg: "var(--hover-bg)", color: "var(--icon-color)" },
 };
 
 function getFileBadge(name) {
   const ext = name?.split(".").pop()?.toLowerCase();
-  return FILE_EXT_COLORS[ext] || { bg: "#f3f4f6", color: "#6b7280" };
+  return FILE_EXT_COLORS[ext] || { bg: "var(--hover-bg)", color: "var(--icon-color)" };
 }
 
 function formatSize(bytes) {
@@ -1335,14 +1335,14 @@ export function ChatPage() {
         {view !== "notifications" && view !== "settings" && (
         <>
         {actionError && (
-          <div style={{ padding: "8px 16px", background: "#fef2f2", color: "#dc2626", fontSize: 13, borderBottom: "1px solid #fecaca" }}>
+          <div style={{ padding: "8px 16px", background: "var(--hover-bg)", color: "#dc2626", fontSize: 13, borderBottom: "1px solid var(--border-color)" }}>
             {actionError}
           </div>
         )}
         <div className="chat-list">
           {view === "chats" ? (
             conversations.length === 0 ? (
-              <div style={{ padding: "20px", textAlign: "center", color: "#8a8d91", fontSize: 14 }}>
+              <div style={{ padding: "20px", textAlign: "center", color: "var(--text-secondary)", fontSize: 14 }}>
                 No conversations yet. Use <strong>Find People</strong> to start one.
               </div>
             ) : (
@@ -1351,15 +1351,15 @@ export function ChatPage() {
               ))
             )
           ) : searching ? (
-            <div style={{ padding: "20px", textAlign: "center", color: "#8a8d91", fontSize: 14 }}>
+            <div style={{ padding: "20px", textAlign: "center", color: "var(--text-secondary)", fontSize: 14 }}>
               Searching...
             </div>
           ) : foundUsers.length === 0 && searchTerm.trim() ? (
-            <div style={{ padding: "20px", textAlign: "center", color: "#8a8d91", fontSize: 14 }}>
+            <div style={{ padding: "20px", textAlign: "center", color: "var(--text-secondary)", fontSize: 14 }}>
               No users found matching "{searchTerm}"
             </div>
           ) : foundUsers.length === 0 ? (
-            <div style={{ padding: "20px", textAlign: "center", color: "#8a8d91", fontSize: 14 }}>
+            <div style={{ padding: "20px", textAlign: "center", color: "var(--text-secondary)", fontSize: 14 }}>
               No users found
             </div>
           ) : (
@@ -1459,7 +1459,7 @@ export function ChatPage() {
             )}
           </>
         ) : (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#8a8d91" }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)" }}>
             Select a conversation to start chatting
           </div>
         )}
