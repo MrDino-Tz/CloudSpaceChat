@@ -893,6 +893,7 @@ export function ChatPage() {
   const [previewItem, setPreviewItem] = useState(null);
   const [pendingLink, setPendingLink] = useState(null);
   const [pendingConfirmUser, setPendingConfirmUser] = useState(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const newBtnRef = useRef(null);
@@ -1170,7 +1171,7 @@ export function ChatPage() {
           </svg>
           <span>Settings</span>
         </div>
-        <div className="nav-item" onClick={() => { logout(); setShowMobileMenu(false); }} title="Sign out">
+        <div className="nav-item" onClick={() => { setShowLogoutConfirm(true); setShowMobileMenu(false); }} title="Sign out">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
@@ -1513,6 +1514,40 @@ export function ChatPage() {
                   }}
                 >
                   Send Request
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLogoutConfirm && (
+        <div className="request-popup-overlay" onClick={() => setShowLogoutConfirm(false)}>
+          <div className="request-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="request-popup-content">
+              <div className="request-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </div>
+              <h3>Logout</h3>
+              <p>Are you sure you want to logout?</p>
+              <div className="request-popup-actions" style={{ marginTop: 8 }}>
+                <button
+                  className="verify-btn"
+                  style={{ background: "var(--hover-bg)", color: "var(--text-main)" }}
+                  onClick={() => setShowLogoutConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="verify-btn"
+                  style={{ background: "#dc2626", color: "#fff" }}
+                  onClick={() => { setShowLogoutConfirm(false); logout(); }}
+                >
+                  Logout
                 </button>
               </div>
             </div>
