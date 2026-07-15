@@ -8,7 +8,7 @@ import { getAvatarUrl, getAvatarFallback } from "@/lib/avatar";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import { SidePanel } from "@/components/SidePanel";
 import { FilePreviewModal } from "@/components/FilePreviewModal";
-import { SettingsModal } from "@/components/SettingsModal";
+import { SettingsPanel } from "@/components/SettingsModal";
 import { GroupCreateModal } from "@/components/GroupCreateModal";
 import { getLocalSettings, applyStyleOverrides } from "@/lib/settingsService";
 import { requestNotificationPermission, sendNotification, isInDnd, playSound } from "@/lib/notificationService";
@@ -874,9 +874,8 @@ export function ChatPage() {
   const { user, profile, logout } = useAuth();
   const [view, setView] = useState("chats");
   const [showProfile, setShowProfile] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [showGroupCreate, setShowGroupCreate] = useState(false);
-  const [settings, setSettings] = useState(getLocalSettings());
+  const [settings] = useState(getLocalSettings());
   const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId] = useState(null);
   const [activeConv, setActiveConv] = useState(null);
@@ -1164,7 +1163,7 @@ export function ChatPage() {
           <span>Notifly</span>
         </div>
         <div className="spacer" />
-        <div className="nav-item" onClick={() => { setShowSettings(true); setShowMobileMenu(false); }} title="Settings">
+        <div className="nav-item" onClick={() => { setView("settings"); setShowMobileMenu(false); }} title="Settings">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -1185,7 +1184,7 @@ export function ChatPage() {
         <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)} />
       )}
 
-      <div className="chat-list-panel">
+      <div className={`chat-list-panel ${view === "settings" ? "hidden-settings" : ""}`}>
         <div className="chat-list-header">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button className="mobile-hamburger-btn" onClick={() => setShowMobileMenu(true)}>
@@ -1193,7 +1192,7 @@ export function ChatPage() {
             </button>
             <span className="chat-list-title">{view === "notifications" ? "Notifications" : view === "find-people" ? "Find People" : "Chats"}</span>
           </div>
-          {view !== "notifications" && (
+          {view !== "notifications" && view !== "settings" && (
           <div className="new-btn-wrapper" ref={newBtnRef}>
             <button className="new-chat-btn" onClick={() => setShowNewMenu(!showNewMenu)}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1215,7 +1214,7 @@ export function ChatPage() {
           </div>
         )}
         </div>
-        {view !== "notifications" && (
+        {view !== "notifications" && view !== "settings" && (
         <div className="search-container">
           <div className="search-input-wrapper">
             <input
@@ -1333,7 +1332,7 @@ export function ChatPage() {
           </div>
         )}
 
-        {view !== "notifications" && (
+        {view !== "notifications" && view !== "settings" && (
         <>
         {actionError && (
           <div style={{ padding: "8px 16px", background: "#fef2f2", color: "#dc2626", fontSize: 13, borderBottom: "1px solid #fecaca" }}>
@@ -1374,7 +1373,9 @@ export function ChatPage() {
       </div>
 
       <div className="main-chat">
-        {activeConvId ? (
+        {view === "settings" ? (
+          <SettingsPanel onClose={() => setView("chats")} />
+        ) : activeConvId ? (
           <>
             <div className="chat-header">
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1470,6 +1471,7 @@ export function ChatPage() {
           conversation={activeConv}
           currentUserId={user?.uid}
           onClose={() => setShowSidePanel(false)}
+          onOpenSettings={() => { setShowSidePanel(false); setView("settings"); }}
           onConversationUpdated={() => {
             if (activeConvId) getConversation(activeConvId).then(setActiveConv);
           }}
@@ -1477,7 +1479,6 @@ export function ChatPage() {
       </div>
 
       {showProfile && <ProfileEditModal onClose={() => setShowProfile(false)} />}
-      {showSettings && <SettingsModal onClose={() => { setShowSettings(false); setSettings(getLocalSettings()); }} />}
       {showGroupCreate && <GroupCreateModal onClose={() => setShowGroupCreate(false)} onCreated={(id) => setActiveConvId(id)} />}
 
       {previewItem && (

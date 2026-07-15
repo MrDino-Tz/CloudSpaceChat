@@ -19,11 +19,9 @@ const THEMES = [
   { id: "green", label: "Green", primary: "#22c55e", bg: "#f0fdf4" },
 ];
 
-export function SettingsModal({ onClose }) {
-  const { user, profile } = useAuth();
-  const [tab, setTab] = useState("security");
+function useSettingsState() {
+  const { user } = useAuth();
   const [settings, setSettings] = useState({ ...DEFAULTS });
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadSettings(user?.uid).then(setSettings);
@@ -41,13 +39,7 @@ export function SettingsModal({ onClose }) {
     if (key === "incognito") {
       localStorage.setItem("csc_incognito", String(value));
     }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    await saveSettings(user?.uid, settings);
-    setSaving(false);
-    onClose();
+    saveSettings(user?.uid, next);
   };
 
   const handleClearCache = () => {
@@ -59,42 +51,38 @@ export function SettingsModal({ onClose }) {
     }
   };
 
-  const handleBackdrop = (e) => {
-    if (e.target === e.currentTarget) onClose();
-  };
+  return { settings, update, handleClearCache };
+}
+
+export function SettingsPanel({ onClose }) {
+  const [tab, setTab] = useState("security");
+  const { settings, update, handleClearCache } = useSettingsState();
 
   return (
-    <div className="modal-backdrop" onClick={handleBackdrop}>
-      <div className="settings-modal">
-        <div className="settings-header">
-          <div className="settings-tabs">
-            {TABS.map((t) => (
-              <button key={t.id} className={`settings-tab ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
-                <span className="settings-tab-icon">{t.icon}</span>
-                <span className="settings-tab-label">{t.label}</span>
-              </button>
-            ))}
-          </div>
-          <button className="modal-close-btn" onClick={onClose}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
+    <div className="settings-panel">
+      <div className="settings-panel-header">
+        <button className="settings-panel-back" onClick={onClose}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
+          </svg>
+        </button>
+        <span className="settings-panel-title">Settings</span>
+      </div>
 
-        <div className="settings-body">
-          {tab === "security" && <SecuritySection settings={settings} update={update} />}
-          {tab === "chat" && <ChatSection settings={settings} update={update} />}
-          {tab === "notifications" && <NotificationsSection settings={settings} update={update} />}
-          {tab === "data" && <DataSection settings={settings} update={update} onClearCache={handleClearCache} />}
-        </div>
-
-        <div className="settings-footer">
-          <button className="settings-btn settings-btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="settings-btn settings-btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
+      <div className="settings-tabs-inline">
+        {TABS.map((t) => (
+          <button key={t.id} className={`settings-tab-inline ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+            <span className="settings-tab-icon">{t.icon}</span>
+            <span className="settings-tab-label">{t.label}</span>
           </button>
-        </div>
+        ))}
+      </div>
+
+      <div className="settings-panel-body">
+        {tab === "security" && <SecuritySection settings={settings} update={update} />}
+        {tab === "chat" && <ChatSection settings={settings} update={update} />}
+        {tab === "notifications" && <NotificationsSection settings={settings} update={update} />}
+        {tab === "data" && <DataSection settings={settings} update={update} onClearCache={handleClearCache} />}
       </div>
     </div>
   );
