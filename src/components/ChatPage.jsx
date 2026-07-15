@@ -1471,7 +1471,6 @@ export function ChatPage() {
           conversation={activeConv}
           currentUserId={user?.uid}
           onClose={() => setShowSidePanel(false)}
-          onOpenSettings={() => { setShowSidePanel(false); setView("settings"); }}
           onConversationUpdated={() => {
             if (activeConvId) getConversation(activeConvId).then(setActiveConv);
           }}
