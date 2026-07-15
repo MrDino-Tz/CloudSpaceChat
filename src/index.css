@@ -441,7 +441,7 @@ html[data-theme="dark"] body {
 
 .message-bubble {
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--bubble-radius, 16px);
   font-size: var(--msg-font-size, 14px);
   position: relative;
   min-width: 80px;
@@ -457,6 +457,32 @@ html[data-theme="dark"] body {
 .message-wrapper.outgoing .message-bubble {
   background-color: var(--msg-outgoing);
   color: white;
+}
+
+/* Classic tail for incoming */
+.message-wrapper.incoming .message-bubble[data-tail="1"]::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-right-color: var(--msg-incoming);
+  border-bottom-color: var(--msg-incoming);
+}
+
+/* Classic tail for outgoing */
+.message-wrapper.outgoing .message-bubble[data-tail="1"]::before {
+  content: "";
+  position: absolute;
+  right: -8px;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-left-color: var(--msg-outgoing);
+  border-bottom-color: var(--msg-outgoing);
 }
 
 /* ── Context Menu ── */

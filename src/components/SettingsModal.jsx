@@ -32,7 +32,7 @@ function useSettingsState() {
     setSettings(next);
 
     if (key === "theme") applyTheme(value);
-    if (["bubbleStyle", "fontSize", "wallpaper"].includes(key)) applyStyleOverrides(next);
+    if (["bubbleStyle", "fontSize", "wallpaper", "wallpaperUrl"].includes(key)) applyStyleOverrides(next);
     if (key === "presenceVisible") {
       localStorage.setItem("csc_presence_visible", String(value));
     }

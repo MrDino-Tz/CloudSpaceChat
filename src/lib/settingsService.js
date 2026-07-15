@@ -69,9 +69,10 @@ export function applyStyleOverrides(settings) {
   root.style.setProperty("--msg-font-size", fonts[settings.fontSize] || "14px");
 
   // Wallpaper
-  if (settings.wallpaper && settings.wallpaper !== "none") {
-    const isUrl = settings.wallpaper.startsWith("http") || settings.wallpaper.startsWith("/");
-    root.style.setProperty("--chat-bg", isUrl ? `url(${settings.wallpaper})` : settings.wallpaper);
+  const wp = settings.wallpaper === "custom" ? (settings.wallpaperUrl || "none") : settings.wallpaper;
+  if (wp && wp !== "none") {
+    const isUrl = wp.startsWith("http") || wp.startsWith("/");
+    root.style.setProperty("--chat-bg", isUrl ? `url(${wp})` : wp);
     root.style.setProperty("--chat-bg-size", isUrl ? "cover" : "auto");
   } else {
     root.style.setProperty("--chat-bg", "none");

@@ -8,6 +8,7 @@ import {
   leaveGroup,
   deleteGroup,
   updateGroupInfo,
+  updateConversationFields,
   toggleAdmin,
   sendSystemMessage,
 } from "@/lib/chatService";
@@ -275,11 +276,35 @@ export function SidePanel({ conversation, currentUserId, onClose, onOpenSettings
   const [confirmingAction, setConfirmingAction] = useState(null);
   const [memberActions, setMemberActions] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [uploadingWp, setUploadingWp] = useState(false);
 
   const isGroup = conversation?.type === "group";
   const participants = conversation?.participants || [];
   const admins = conversation?.admins || [];
   const isAdmin = isGroup && admins.includes(currentUserId);
+
+  const handleWallpaperUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !conversation?.id) return;
+    setUploadingWp(true);
+    try {
+      const { uploadToCloudinary } = await import("@/lib/cloudinary");
+      const result = await uploadToCloudinary(file, { folder: `wallpapers/${conversation.id}` });
+      await updateConversationFields(conversation.id, { wallpaper: result.secure_url });
+      onConversationUpdated?.();
+    } catch (err) {
+      console.error("Wallpaper upload failed:", err);
+    } finally {
+      setUploadingWp(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveWallpaper = async () => {
+    if (!conversation?.id) return;
+    await updateConversationFields(conversation.id, { wallpaper: "" });
+    onConversationUpdated?.();
+  };
 
   const loadMembers = () => {
     if (!conversation?.id) return;
@@ -599,6 +624,37 @@ export function SidePanel({ conversation, currentUserId, onClose, onOpenSettings
           </div>
         </div>
       )}
+
+      {/* Chat Wallpaper */}
+      <div className="panel-section">
+        <div className="section-header">
+          <span className="section-title">Chat Wallpaper</span>
+        </div>
+        {conversation?.wallpaper ? (
+          <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", marginBottom: 8 }}>
+            <img src={conversation.wallpaper} alt="" style={{ width: "100%", height: 100, objectFit: "cover", display: "block", borderRadius: 8 }} />
+            <button
+              onClick={handleRemoveWallpaper}
+              style={{
+                position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff",
+                border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        ) : null}
+        <label
+          className="group-action-btn"
+          style={{ width: "100%", justifyContent: "center", cursor: "pointer", opacity: uploadingWp ? 0.5 : 1, pointerEvents: uploadingWp ? "none" : "auto" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+          </svg>
+          {uploadingWp ? "Uploading..." : conversation?.wallpaper ? "Change Wallpaper" : "Set Wallpaper"}
+          <input type="file" accept="image/*" onChange={handleWallpaperUpload} style={{ display: "none" }} />
+        </label>
+      </div>
 
       </>)}
       {/* Actions */}

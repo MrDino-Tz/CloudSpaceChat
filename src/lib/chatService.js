@@ -220,6 +220,14 @@ export async function updateGroupInfo(conversationId, data) {
   await updateDoc(doc(db, "conversations", conversationId), update);
 }
 
+export async function updateConversationFields(conversationId, fields) {
+  const update = { updatedAt: serverTimestamp() };
+  for (const [k, v] of Object.entries(fields)) {
+    if (v !== undefined) update[k] = v;
+  }
+  await updateDoc(doc(db, "conversations", conversationId), update);
+}
+
 export async function toggleAdmin(conversationId, targetUserId) {
   const ref = doc(db, "conversations", conversationId);
   const snap = await getDoc(ref);
