@@ -892,6 +892,7 @@ export function ChatPage() {
   const [pendingFile, setPendingFile] = useState(null);
   const [previewItem, setPreviewItem] = useState(null);
   const [pendingLink, setPendingLink] = useState(null);
+  const [pendingConfirmUser, setPendingConfirmUser] = useState(null);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const newBtnRef = useRef(null);
@@ -1346,7 +1347,7 @@ export function ChatPage() {
             </div>
           ) : (
             foundUsers.map((u) => (
-              <UserSearchResult key={u.uid} foundUser={u} onStartChat={startChatWithUser} />
+              <UserSearchResult key={u.uid} foundUser={u} onStartChat={setPendingConfirmUser} />
             ))
           )}
         </div>
@@ -1466,6 +1467,58 @@ export function ChatPage() {
       )}
 
       {pendingLink && <LinkSecurityDialog url={pendingLink} onClose={() => setPendingLink(null)} />}
+
+      {pendingConfirmUser && (
+        <div className="request-popup-overlay" onClick={() => setPendingConfirmUser(null)}>
+          <div className="request-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="request-popup-content">
+              {pendingConfirmUser.avatar ? (
+                <img
+                  src={getAvatarUrl(pendingConfirmUser)}
+                  alt=""
+                  style={{ width: 72, height: 72, borderRadius: 8, objectFit: "cover" }}
+                />
+              ) : (
+                <div style={{
+                  width: 72, height: 72, borderRadius: 8,
+                  background: "var(--primary-color)", color: "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 28, fontWeight: 700,
+                }}>
+                  {getAvatarFallback(pendingConfirmUser.displayName)}
+                </div>
+              )}
+              <h3>{pendingConfirmUser.displayName}</h3>
+              <p>@{pendingConfirmUser.username || "user"}</p>
+              {pendingConfirmUser.bio && (
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: -4 }}>
+                  {pendingConfirmUser.bio}
+                </p>
+              )}
+              <p style={{ marginTop: 4 }}>Send a chat request to this user?</p>
+              <div className="request-popup-actions" style={{ marginTop: 8 }}>
+                <button
+                  className="verify-btn"
+                  style={{ background: "var(--hover-bg)", color: "var(--text-main)" }}
+                  onClick={() => setPendingConfirmUser(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="verify-btn"
+                  onClick={async () => {
+                    const user = pendingConfirmUser;
+                    setPendingConfirmUser(null);
+                    await startChatWithUser(user);
+                  }}
+                >
+                  Send Request
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showRequestPopup && (
         <div className="request-popup-overlay" onClick={closeRequestPopup}>
