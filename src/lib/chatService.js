@@ -1,7 +1,7 @@
 import {
   collection, doc, addDoc, getDoc, getDocs, setDoc,
   updateDoc, query, where, orderBy, limit, increment,
-  onSnapshot, serverTimestamp, arrayUnion, writeBatch,
+  onSnapshot, serverTimestamp, arrayUnion, writeBatch, deleteField,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -238,6 +238,22 @@ export async function toggleAdmin(conversationId, targetUserId) {
     updatedAt: serverTimestamp(),
   });
   return !isAdmin;
+}
+
+export async function setTyping(conversationId, userId) {
+  try {
+    await updateDoc(doc(db, "conversations", conversationId), {
+      [`typing.${userId}`]: serverTimestamp(),
+    });
+  } catch { /* silent */ }
+}
+
+export async function clearTyping(conversationId, userId) {
+  try {
+    await updateDoc(doc(db, "conversations", conversationId), {
+      [`typing.${userId}`]: deleteField(),
+    });
+  } catch { /* silent */ }
 }
 
 export async function sendSystemMessage(conversationId, content) {

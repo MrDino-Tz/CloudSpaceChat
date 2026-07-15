@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { listenToConversations, listenToMessages, sendMessage, getConversation, createPrivateConversation, deleteMessageForMe, deleteMessageForEveryone, editMessage, toggleStarMessage } from "@/lib/chatService";
+import { listenToConversations, listenToMessages, sendMessage, getConversation, createPrivateConversation, deleteMessageForMe, deleteMessageForEveryone, editMessage, toggleStarMessage, setTyping, clearTyping } from "@/lib/chatService";
 import { getUserProfile, searchUsers, getAllUsers } from "@/lib/userService";
 import { usePresence } from "@/hooks/usePresence";
 import { getAvatarUrl, getAvatarFallback } from "@/lib/avatar";
@@ -741,12 +741,22 @@ function MessageInput({ conversationId, senderId, onFileSelect, settings, replyT
   const fileRef = useRef(null);
   const menuRef = useRef(null);
   const typingSoundTimer = useRef(null);
+  const typingFireTimer = useRef(null);
+  const typingClearTimer = useRef(null);
 
   useEffect(() => {
     const close = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (conversationId && senderId) clearTyping(conversationId, senderId);
+      if (typingFireTimer.current) clearTimeout(typingFireTimer.current);
+      if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
+    };
+  }, [conversationId, senderId]);
 
   const handleTyping = (e) => {
     setText(e.target.value);
@@ -757,10 +767,29 @@ function MessageInput({ conversationId, senderId, onFileSelect, settings, replyT
     }
   };
 
+  const fireTyping = () => {
+    if (!conversationId || !senderId) return;
+    setTyping(conversationId, senderId);
+    if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
+    typingClearTimer.current = setTimeout(() => {
+      clearTyping(conversationId, senderId);
+    }, 3000);
+  };
+
+  const handleInput = (e) => {
+    handleTyping(e);
+    if (!typingFireTimer.current) {
+      fireTyping();
+      typingFireTimer.current = setTimeout(() => { typingFireTimer.current = null; }, 1000);
+    }
+  };
+
   const handleSend = async (e) => {
     e.preventDefault();
     if (!text.trim() || sending) return;
     setSending(true);
+    if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
+    if (conversationId && senderId) clearTyping(conversationId, senderId);
     try {
       await sendMessage(conversationId, senderId, {
         content: text.trim(),
@@ -834,7 +863,7 @@ function MessageInput({ conversationId, senderId, onFileSelect, settings, replyT
           )}
         </div>
         <input type="file" ref={fileRef} style={{ display: "none" }} onChange={handleFile} />
-        <input type="text" className="msg-input" placeholder="Type a message..." value={text} onChange={handleTyping} />
+        <input type="text" className="msg-input" placeholder="Type a message..." value={text} onChange={handleInput} />
         <button className="send-btn" type="submit" disabled={sending}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="22" y1="2" x2="11" y2="13" />
@@ -1144,6 +1173,22 @@ export function ChatPage() {
     ? activeConv.name
     : recipient?.displayName || "Loading...";
 
+  const typingUsers = (() => {
+    const t = activeConv?.typing;
+    if (!t) return [];
+    const now = Date.now();
+    return Object.entries(t).filter(([uid, ts]) => {
+      if (uid === user?.uid) return false;
+      if (!ts) return false;
+      const tsMs = ts?.seconds ? ts.seconds * 1000 : typeof ts === "number" ? ts : 0;
+      return now - tsMs < 5000;
+    }).map(([uid]) => uid);
+  })();
+
+  const typingText = typingUsers.length === 0 ? null
+    : typingUsers.length === 1 ? "typing..."
+    : `${typingUsers.length} people typing...`;
+
   const avatarName = profile?.displayName || user?.email || "U";
 
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount?.[user?.uid] || 0), 0);
@@ -1446,7 +1491,9 @@ export function ChatPage() {
                 <div>
                   <div className="chat-title">{convName}</div>
                   <div className="chat-subtitle">
-                    {activeConv?.type === "group"
+                    {typingText ? (
+                      <span className="typing-indicator-header">{typingText}<span className="typing-dots"><span></span><span></span><span></span></span></span>
+                    ) : activeConv?.type === "group"
                       ? `${activeConv.participants?.length || 0} members`
                       : recipient
                         ? `@${recipient.username || "user"} \u2022 ${recipient.isOnline ? "online" : "offline"}`
