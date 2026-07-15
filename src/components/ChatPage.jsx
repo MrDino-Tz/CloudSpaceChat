@@ -1241,9 +1241,26 @@ export function ChatPage() {
               <span>Notifications</span>
               {unreadNotifs > 0 && <span className="notif-badge">{unreadNotifs}</span>}
             </div>
-            <span className={`notif-chevron ${notifExpanded ? "expanded" : ""}`}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {notifications.length > 0 && (
+                <button
+                  style={{
+                    background: "none", border: "none", color: "var(--primary-color)",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "4px 8px",
+                    borderRadius: 6, whiteSpace: "nowrap",
+                  }}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await Promise.all(notifications.map((n) => deleteNotification(n.id)));
+                  }}
+                >
+                  Clear all
+                </button>
+              )}
+              <span className={`notif-chevron ${notifExpanded ? "expanded" : ""}`}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </span>
+            </div>
           </div>
           {notifExpanded && (
             <div className="notif-list">
@@ -1291,7 +1308,7 @@ export function ChatPage() {
                         <button className="notif-btn notif-accept" onClick={async (e) => {
                           e.stopPropagation();
                           await markNotificationRead(n.id);
-                          notifToDeleteRef.current = n.id;
+                          await deleteNotification(n.id);
                           setActiveRequest(n.data.requestId);
                           setPopupRole("sender");
                           setPopupStep("enter-code");
@@ -1609,10 +1626,6 @@ export function ChatPage() {
                       if (!ok) {
                         setOtpValues(["","","","","",""]);
                       } else {
-                        if (notifToDeleteRef.current) {
-                          await deleteNotification(notifToDeleteRef.current);
-                          notifToDeleteRef.current = null;
-                        }
                         setPopupStep("done");
                       }
                     }}
