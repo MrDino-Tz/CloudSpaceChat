@@ -1125,7 +1125,7 @@ export function ChatPage() {
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount?.[user?.uid] || 0), 0);
 
   return (
-    <div className={`app-window ${activeConvId ? "mobile-chat-active" : ""} ${showMobileMenu ? "mobile-menu-open" : ""}`}>
+    <div className={`app-window ${(activeConvId || view === "settings") ? "mobile-chat-active" : ""} ${showMobileMenu ? "mobile-menu-open" : ""}`}>
       <div className="sidebar">
         <div className="sidebar-avatar-wrapper" onClick={() => { setShowProfile(true); setShowMobileMenu(false); }} title="Edit profile">
           {profile?.avatar ? (
