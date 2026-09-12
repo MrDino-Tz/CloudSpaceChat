@@ -7,11 +7,48 @@ import { db } from "@/lib/firebase";
 
 // ─── Conversations ──────────────────────────────────────────────────────────
 
+const dedupeHealInFlight = {};
+
+/** Deterministic ID for a private chat — both users always resolve to the same doc. */
+function getPrivateConversationId(userId1, userId2) {
+  return `dm_${[userId1, userId2].sort().join("_")}`;
+}
+
+async function getMessagesByConversation(conversationId) {
+  const snap = await getDocs(
+    query(collection(db, "messages"), where("conversationId", "==", conversationId)),
+  );
+  return snap.docs;
+}
+
+async function mergeConversationMessages(fromId, intoId) {
+  const msgs = await getMessagesByConversation(fromId);
+  let batch = writeBatch(db);
+  let count = 0;
+  for (const m of msgs) {
+    batch.update(m.ref, { conversationId: intoId });
+    count++;
+    if (count >= 400) {
+      await batch.commit();
+      batch = writeBatch(db);
+      count = 0;
+    }
+  }
+  if (count > 0) await batch.commit();
+}
+
 export async function createPrivateConversation(userId1, userId2) {
+  // 1) Deterministic doc ID first — kills the creation race between the two clients.
+  const convId = getPrivateConversationId(userId1, userId2);
+  const snap = await getDoc(doc(db, "conversations", convId));
+  if (snap.exists() && !snap.data().isDeleted) return convId;
+
+  // 2) Reuse / heal any pre-existing legacy conversation.
   const existing = await deduplicatePrivateConversations(userId1, userId2);
   if (existing) return existing;
 
-  const ref = await addDoc(collection(db, "conversations"), {
+  // 3) Idempotent create — both clients target the exact same document.
+  await setDoc(doc(db, "conversations", convId), {
     type: "private",
     participants: [userId1, userId2],
     createdAt: serverTimestamp(),
@@ -23,7 +60,7 @@ export async function createPrivateConversation(userId1, userId2) {
     unreadCount: {},
     typing: {},
   });
-  return ref.id;
+  return convId;
 }
 
 export async function createGroupConversation(data) {
@@ -52,6 +89,7 @@ export function listenToConversations(userId, callback, onError) {
     collection(db, "conversations"),
     where("participants", "array-contains", userId),
   );
+  let healTimer = null;
   return onSnapshot(q, 
     (snap) => {
       const list = snap.docs
@@ -63,6 +101,27 @@ export function listenToConversations(userId, callback, onError) {
         return tb - ta;
       });
       callback(list);
+
+      // Lazily heal existing duplicate private conversations (fire-and-forget, once per burst).
+      if (healTimer) return;
+      healTimer = setTimeout(() => {
+        healTimer = null;
+        const pairs = new Map();
+        for (const c of list) {
+          if (c.type !== "private" || c.participants?.length !== 2) continue;
+          const key = c.participants.slice().sort().join("_");
+          if (!pairs.has(key)) pairs.set(key, []);
+          pairs.get(key).push(c);
+        }
+        for (const [_key, convs] of pairs) {
+          if (convs.length > 1 && !dedupeHealInFlight[_key]) {
+            dedupeHealInFlight[_key] = true;
+            deduplicatePrivateConversations(convs[0].participants[0], convs[0].participants[1])
+              .catch(() => {})
+              .finally(() => { delete dedupeHealInFlight[_key]; });
+          }
+        }
+      }, 800);
     },
     (error) => {
       console.warn("listenToConversations error:", error);
@@ -130,24 +189,37 @@ export async function deleteMessage(messageId, userId) {
   });
 }
 
-export async function deduplicatePrivateConversations(userId1, userId2) {
+export async function deduplicatePrivateConversations(userId1, userId2, { merge = true } = {}) {
   const q = query(
     collection(db, "conversations"),
     where("participants", "array-contains", userId1),
   );
   const snap = await getDocs(q);
-  const dups = snap.docs.filter(
-    (d) => d.data().type === "private" && d.data().participants.includes(userId2),
-  );
-  if (dups.length > 1) {
-    dups.sort((a, b) => (b.data().createdAt?.toMillis?.() || 0) - (a.data().createdAt?.toMillis?.() || 0));
-    const keep = dups[0];
-    for (const d of dups.slice(1)) {
-      await updateDoc(doc(db, "conversations", d.id), { isDeleted: true });
+  const dups = snap.docs
+    .filter((d) => !d.data().isDeleted && d.data().type === "private" && d.data().participants.includes(userId2))
+    .sort((a, b) => (b.data().createdAt?.toMillis?.() || 0) - (a.data().createdAt?.toMillis?.() || 0));
+
+  if (dups.length <= 1) return dups[0]?.id || null;
+
+  const keep = dups[0];
+  for (const d of dups.slice(1)) {
+    if (merge) {
+      await mergeConversationMessages(d.id, keep.id);
+      // Take the most recent updatedAt / lastMessage so the survivor stays on top.
+      const keepData = keep.data();
+      const loserData = d.data();
+      const updates = {};
+      if ((loserData.updatedAt?.toMillis?.() || 0) > (keepData.updatedAt?.toMillis?.() || 0)) {
+        updates.updatedAt = loserData.updatedAt;
+      }
+      if ((loserData.lastMessage?.timestamp?.toMillis?.() || 0) > (keepData.lastMessage?.timestamp?.toMillis?.() || 0)) {
+        updates.lastMessage = loserData.lastMessage;
+      }
+      if (Object.keys(updates).length) await updateDoc(doc(db, "conversations", keep.id), updates);
     }
-    return keep.id;
+    await updateDoc(doc(db, "conversations", d.id), { isDeleted: true });
   }
-  return dups[0]?.id || null;
+  return keep.id;
 }
 
 /** Delete only for the current user (soft hide) */
