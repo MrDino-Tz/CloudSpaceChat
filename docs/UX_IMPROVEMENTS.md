@@ -12,12 +12,17 @@ All recent UX enhancements to CloudSpaceChat — confirmation flows, settings pa
 | Logout confirmation popup | Done | `ChatPage.jsx` |
 | Accepted notifications auto-dismiss | Done | `ChatPage.jsx` |
 | Clear All notifications | Done | `ChatPage.jsx` |
+| Chat request OTP verification | Done | `requestService.js`, `ChatPage.jsx` |
 | Settings modal → inline side panel | Done | `SettingsModal.jsx`, `ChatPage.jsx` |
 | Settings full-width in main area | Done | `ChatPage.jsx`, `index.css` |
 | Per-chat wallpaper (upload/remove) | Done | `SidePanel.jsx`, `chatService.js` |
 | Dark mode fixes (hardcoded colors) | Done | `index.css` |
 | Chat search (filter by name/message) | Done | `ChatPage.jsx` |
 | Typing indicator | Done | `chatService.js`, `ChatPage.jsx`, `index.css` |
+| Extended file types (code, executables, audio, docs) | Done | `ChatPage.jsx`, `SidePanel.jsx` |
+| Voice messages (hold-to-record + audio player) | Done | `ChatPage.jsx`, `cloudinary.js`, `index.css` |
+| Media previews / auto-download (data-saver) | Done | `ChatPage.jsx`, `index.css` |
+| Message bubble preview in settings | Done | `SettingsModal.jsx`, `index.css` |
 
 ---
 
@@ -232,13 +237,88 @@ Three dots bounce vertically with staggered timing.
 
 ---
 
+## 11. Extended File Types
+
+**Purpose:** Broaden the file picker beyond generic documents so most attachments get a recognizable badge + icon color.
+
+**Behavior:**
+- `accept` string on the file input: PDF, Office docs, archives, executables (apk/exe/msi/bat/sh), audio (mp3/wav/ogg/m4a/webm), source/code (js/ts/py/html/css/json/java/cpp/csv/xml/md), design (psd/ai), and more
+- The picker filter is cosmetic — there is no hard server-side type validation
+
+**Implementation:**
+- `FILE_EXT_COLORS` in `ChatPage.jsx` — extension → badge background color (used by `FileExtBadge`)
+- `FILE_ICONS` in `SidePanel.jsx` — same extensions rendered in the side panel attachment list
+
+**Location:** `ChatPage.jsx` (accept string, `FILE_EXT_COLORS`), `SidePanel.jsx` (`FILE_ICONS`)
+
+---
+
+## 12. Voice Messages (Hold-to-Record)
+
+**Purpose:** Let users send short voice notes directly from the message input.
+
+**Behavior:**
+- Mic button appears when the text field is empty; Send button appears when text is entered (swapped with `btn-pop` animation)
+- **Press and hold** the mic to record; release to stop and send (also stops on `pointerup` anywhere / scrolling away)
+- A recording bar shows a pulsing red dot + elapsed timer
+- Audio is recorded via `MediaRecorder` (`audio/webm`), uploaded to Cloudinary as `voice-note.webm` (`resourceType: "video"` so browsers can play it)
+- Sent as a regular message with `content: "🎤 Voice note"`, `type: "audio"`, and `attachments: [{ url, type: "audio", name, size, duration }]`
+- Received/played back with an inline audio player (play/pause + animated waveform bars)
+- Avatars are not shown in voice-note bubbles
+- "🎤 Voice note" is excluded from the bubble text render list (it still shows in the chat-list preview)
+
+**Implementation:**
+- `uploadToCloudinary(file, { resourceType })` in `cloudinary.js` — supports overriding the resource type (default `"auto"`)
+- `AudioAttachment` in `ChatPage.jsx` — `<audio>` element + 32 stable waveform bars that animate while playing
+- `MessageInput` — hold-to-record handlers on the mic button
+
+**Location:** `ChatPage.jsx` (recording state, AudioAttachment, input), `cloudinary.js`, `index.css` (`.recording-bar`, `.mic-btn-recording`, waveform keyframes)
+
+---
+
+## 13. Media Previews / Auto-Download (Data-Saver)
+
+**Purpose:** Avoid downloading large media over metered connections unless the user wants it.
+
+**Behavior:**
+- New settings tab "Data & Storage" ▶ "Auto-Download": Images (default on), Videos (off), Audio (off)
+- `MessageBubble.shouldAutoLoad(type)` checks the matching setting:
+  - **Image** and auto-load off → blurred thumbnail (Cloudinary `w_240,q_auto,f_auto`) with an eye icon overlay
+  - **Video** and auto-load off → first frame (`preload="metadata"`, blurred) with a play overlay
+  - **Audio** and auto-load off → small circular play button only
+- Tapping the preview loads the full media inline (`loadMedia`)
+- "Clear Cache & Reload" (Storage section) clears `localStorage` settings and reloads the page
+
+**Implementation:**
+- `MediaPreviewPlaceholder` in `ChatPage.jsx`
+- `autoDownloadImages` / `autoDownloadVideo` / `autoDownloadAudio` in `settingsService.js` DEFAULTS
+
+**Location:** `ChatPage.jsx`, `settingsService.js`, `SettingsModal.jsx` (Data tab), `index.css` (`.media-preview-*`)
+
+---
+
+## 14. Message Bubble Preview in Settings
+
+**Purpose:** Show how message bubbles will look as the user changes Corner style / Font size / Font style.
+
+**Behavior:**
+- `BubblePreview` renders an incoming + outgoing bubble at the top of the "Message Bubbles" card
+- Corner style → radius + classic triangle tails
+- Font size and font style → applied live to the preview text
+- Font styles loaded from Google Fonts (`@import` in `index.css`): Inter, Nunito, Poppins, Quicksand, Patrick Hand, Dancing Script, Caveat, Pacifico, Shadows Into Light, Kalam
+
+**Location:** `SettingsModal.jsx` (`BubblePreview`, `PREVIEW_FAMILIES`), `index.css` (`.bubble-preview-*`)
+
+---
+
 ## Key Files Reference
 
 | File | What it contains |
 |------|------------------|
-| `src/components/ChatPage.jsx` | View system, all popup states, settings panel, typing indicator computation, message input with typing events |
-| `src/components/SettingsModal.jsx` | `useSettingsState()` hook, `SettingsPanel` component, theme/wallpaper/bubble settings UI |
-| `src/components/SidePanel.jsx` | Chat wallpaper upload, group info, member list |
+| `src/components/ChatPage.jsx` | View system, all popup states, settings panel, typing indicator computation, message input with typing events, voice recording, media previews |
+| `src/components/SettingsModal.jsx` | `useSettingsState()` hook, `SettingsPanel` component, theme/wallpaper/bubble settings UI, bubble preview |
+| `src/components/SidePanel.jsx` | Chat wallpaper upload, group info, member list, file icons |
 | `src/lib/chatService.js` | `setTyping`, `clearTyping`, `updateConversationFields`, `sendMessage`, `markConversationLastMessage` |
-| `src/lib/settingsService.js` | `applyTheme`, `applyStyleOverrides`, `DEFAULTS` |
-| `src/index.css` | All CSS variables, dark mode overrides, typing animation, responsive settings styles |
+| `src/lib/cloudinary.js` | `uploadToCloudinary` with `resourceType` option |
+| `src/lib/settingsService.js` | `applyTheme`, `applyStyleOverrides`, `DEFAULTS` (incl. font styles + auto-download) |
+| `src/index.css` | All CSS variables, dark mode overrides, typing animation, recording bar, media previews, bubble preview, responsive settings styles |

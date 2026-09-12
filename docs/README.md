@@ -15,7 +15,7 @@ CloudSpaceChat is a real-time chat application built with React 19, Vite 8, Fire
 
 | Document | Scope |
 |----------|-------|
-| [UX Improvements](./UX_IMPROVEMENTS.md) | Confirmation popups, inline settings panel, per-chat wallpapers, dark mode fixes, chat search, typing indicator |
+| [UX Improvements](./UX_IMPROVEMENTS.md) | Confirmation popups, inline settings panel, per-chat wallpapers, dark mode fixes, chat search, typing indicator, extended file types, voice messages, auto-download/media previews, bubble preview |
 | [Color Branding & Theming](./COLOR_BRANDING.md) | CSS variable system, theme presets, dark mode, bubble styles, wallpapers, runtime overrides |
 | [UI Component Patterns](./UI_COMPONENTS.md) | Reusable component conventions, spacing, colors, typography, responsive behavior |
 
@@ -52,6 +52,7 @@ src/
 │   ├── chatService.js        # Conversation/message CRUD, typing indicators
 │   ├── requestService.js     # Friend requests, OTP, notifications
 │   ├── settingsService.js    # Theme application, settings persistence
+│   ├── cloudinary.js         # Cloudinary upload integration (resourceType override)
 │   ├── mediaService.js       # Cloudinary upload integration
 │   ├── firebase.js           # Firebase config + initialization
 │   ├── avatar.js             # Avatar fallback/URL helpers

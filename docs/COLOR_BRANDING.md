@@ -222,16 +222,19 @@ The `useSettingsState()` hook calls `applyStyleOverrides()` when these keys chan
 | `theme` | Calls `applyTheme()` directly — changes `--primary-color` and dark mode |
 | `bubbleStyle` | Changes `--bubble-radius` and `--bubble-tail` |
 | `fontSize` | Changes `--msg-font-size` |
+| `fontFamily` | Changes `--msg-font-family` |
 | `wallpaper` | Changes `--chat-bg` and `--chat-bg-size` |
 | `wallpaperUrl` | Changes `--chat-bg` and `--chat-bg-size` (when `wallpaper === "custom"`) |
 
 ```js
-// SettingsModal.jsx:42-46
+// SettingsModal.jsx:35
 if (key === "theme") applyTheme(value);
-if (["bubbleStyle", "fontSize", "wallpaper", "wallpaperUrl"].includes(key)) {
+if (["bubbleStyle", "fontSize", "fontFamily", "wallpaper", "wallpaperUrl"].includes(key)) {
   applyStyleOverrides(next);
 }
 ```
+
+`applyStyleOverrides()` maps `fontFamily` to `--msg-font-family`.
 
 ---
 
@@ -242,6 +245,31 @@ if (["bubbleStyle", "fontSize", "wallpaper", "wallpaperUrl"].includes(key)) {
 | `small` | `13px` |
 | `medium` | `14px` (default) |
 | `large` | `16px` |
+
+---
+
+## Font Style Options
+
+Fonts are loaded from Google Fonts via `@import` at the top of `src/index.css` (Inter, Nunito, Poppins, Quicksand, Patrick Hand, Dancing Script, Caveat, Pacifico, Shadows Into Light, Kalam).
+
+| Value | `--msg-font-family` (source) |
+|-------|-------------------------------|
+| `system` (default) | `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif` |
+| `modern` | Inter, Segoe UI, Helvetica Neue, Arial, sans-serif |
+| `rounded` | Nunito, Segoe UI, Arial, sans-serif |
+| `poppins` | Poppins, Segoe UI, Arial, sans-serif |
+| `clean` | Quicksand, Segoe UI, Arial, sans-serif |
+| `handwritten` | Patrick Hand, Comic Sans MS, cursive |
+| `dancing` | Dancing Script, cursive |
+| `caveat` | Caveat, cursive |
+| `pacifico` | Pacifico, cursive |
+| `shadows` | Shadows Into Light, cursive |
+| `kalam` | Kalam, cursive |
+| `serif` | Georgia, Times New Roman, serif |
+| `mono` | Courier New, Consolas, Menlo, monospace |
+
+Applied to message bubbles via `font-family: var(--msg-font-family)` on `.message-bubble`.
+Live preview in Settings (Message Bubbles) uses the same stacks.
 
 ---
 

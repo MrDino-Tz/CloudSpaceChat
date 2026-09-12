@@ -1,16 +1,97 @@
-# React + Vite
+# CloudSpaceChat — Documentation Index
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Platform Overview
 
-Currently, two official plugins are available:
+CloudSpaceChat is a real-time chat application built with React 19, Vite 8, Firebase (Firestore + Auth), and Tailwind CSS. It supports private messaging, group chats, media sharing, and a fully customizable UI theme system.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**Live:** https://MrDino-Tz.github.io/CloudSpaceChat/  
+**Repo:** https://github.com/MrDino-Tz/CloudSpaceChat
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Documentation
 
-## Expanding the Oxlint configuration
+### Features & Architecture
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+| Document | Scope |
+|----------|-------|
+| [UX Improvements](./docs/UX_IMPROVEMENTS.md) | Confirmation popups, inline settings panel, per-chat wallpapers, dark mode fixes, chat search, typing indicator, extended file types, voice messages, auto-download/media previews, bubble preview |
+| [Color Branding & Theming](./docs/COLOR_BRANDING.md) | CSS variable system, theme presets, dark mode, bubble styles, font styles, wallpapers, runtime overrides |
+| [UI Component Patterns](./docs/UI_COMPONENTS.md) | Reusable component conventions, spacing, colors, typography, responsive behavior |
+
+### Existing Feature Docs
+
+| Document | Scope |
+|----------|-------|
+| [Chat Encryption Timestamps](./docs/chat-encryption-timestamps.md) | Encryption banner and message timestamps |
+| [Chat Request OTP Flow](./docs/chat-request-otp-flow.md) | Friend request system with OTP verification |
+| [Group Chat Features](./docs/group-chat-features.md) | Group creation, admin controls, member management |
+| [Link Security Scanning](./docs/link-security-scanning.md) | URL safety scanning and trusted domains |
+| [Firestore Security Rules](./docs/Firestore-Security-Rules.md) | Backend security rules |
+| [Complete Project Documentation](./docs/CloudChat-Platform-Complete-Project-Documentation.md) | Full platform overview |
+
+---
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── ChatPage.jsx          # Main chat view, message list, input, view system
+│   ├── SettingsModal.jsx     # Settings panel + useSettingsState hook
+│   ├── SidePanel.jsx         # Right-side panel (info, members, wallpaper, settings)
+│   ├── GroupCreateModal.jsx  # Group creation UI
+│   ├── MessageBubble.jsx     # Individual message rendering (inline in ChatPage)
+│   └── ui/                   # Reusable primitives (AuthPage, particles, button)
+├── contexts/
+│   └── AuthContext.jsx       # Firebase auth context + useAuth hook
+├── hooks/
+│   ├── useMessages.js        # Message listener hook
+│   └── usePresence.js        # Online presence tracking
+├── lib/
+│   ├── chatService.js        # Conversation/message CRUD, typing indicators
+│   ├── requestService.js     # Friend requests, OTP, notifications
+│   ├── settingsService.js    # Theme application, settings persistence
+│   ├── cloudinary.js         # Cloudinary upload integration (resourceType override)
+│   ├── mediaService.js       # Cloudinary upload integration
+│   ├── firebase.js           # Firebase config + initialization
+│   ├── avatar.js             # Avatar fallback/URL helpers
+│   └── time.js               # Timestamp formatting utilities
+└── index.css                 # All CSS (4000+ lines, CSS variables, dark mode)
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 19, Vite 8 |
+| Styling | CSS custom properties, Tailwind CSS (minimal) |
+| Backend | Firebase Firestore (real-time), Firebase Auth |
+| Media | Cloudinary (images, video, audio, files) |
+| Linting | Oxlint |
+| Hosting | GitHub Pages |
+
+---
+
+## Quick Reference — Settings System
+
+The settings system lives in three layers:
+
+1. **`DEFAULTS`** in `settingsService.js` — default values for all settings
+2. **`useSettingsState()`** in `SettingsModal.jsx` — React hook that loads/saves settings and auto-applies on toggle
+3. **`applyTheme()` + `applyStyleOverrides()`** in `settingsService.js` — writes CSS variables to `document.documentElement.style`
+
+Settings are persisted per-user in Firestore (`users/{uid}.settings`) with localStorage fallback for presence/incognito.
+
+---
+
+## Development
+
+```bash
+npm install
+npm run dev        # Vite dev server
+npm run build      # Production build
+cmd /c "npm run lint"   # Oxlint (PowerShell requires cmd wrapper)
+```

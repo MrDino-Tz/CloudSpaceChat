@@ -394,12 +394,47 @@ Icons use colored backgrounds: `.attach-menu-icon-image` = `#dbeafe`/`#2563eb`, 
   padding: 8px 12px;
   border-radius: var(--bubble-radius, 16px);
   font-size: var(--msg-font-size, 14px);
+  font-family: var(--msg-font-family);
   position: relative;
   min-width: 80px;
 }
 .incoming .message-bubble { background: var(--msg-incoming); color: var(--text-main); }
 .outgoing .message-bubble { background: var(--msg-outgoing); color: white; }
 ```
+
+Text font family/size come from settings (`--msg-font-family`, `--msg-font-size` — see COLOR_BRANDING.md for options).
+
+### Classic Tail
+When `bubbleStyle === "classic"`, `.message-bubble` gets `data-tail="1"` and a border-triangle tail is drawn on the bottom corner via `::before`. The tail uses `--bubble-tail` (set to `"1"` by `applyStyleOverrides` in `settingsService.js`) and `data-tail` on the element:
+
+```css
+/* incoming — bottom-left */
+.message-wrapper.incoming .message-bubble[data-tail="1"]::before {
+  content: ""; position: absolute; left: -8px; bottom: 0;
+  width: 0; height: 0;
+  border: 8px solid transparent;
+  border-right-color: var(--msg-incoming);
+  border-bottom-color: var(--msg-incoming);
+}
+/* outgoing — bottom-right */
+.message-wrapper.outgoing .message-bubble[data-tail="1"]::before {
+  content: ""; position: absolute; right: -8px; bottom: 0;
+  width: 0; height: 0;
+  border: 8px solid transparent;
+  border-left-color: var(--msg-outgoing);
+  border-bottom-color: var(--msg-outgoing);
+}
+```
+
+### Attachment / Content Patterns
+- **Images**: rendered inline (auto-download on) or as a blurred Cloudinary thumbnail + eye icon (auto-download off)
+- **Videos**: `<video preload="metadata">` (blurred + play overlay when auto-download off)
+- **Audio attachments** (`type: "audio"`): `AudioAttachment` — play/pause `<audio>` + 32 animated waveform bars; no avatar
+- **Files**: `FileExtBadge` — extension badge colored by `FILE_EXT_COLORS`
+- **Voice notes**: sent as `content: "🎤 Voice note"`; that literal is excluded from bubble text (it renders as the audio player)
+
+### Settings Bubble Preview
+`BubblePreview` in `SettingsModal.jsx` mirrors these patterns with `.bubble-preview-*` classes (radius from Corner style, plus classic tails via `.bubble-preview-bubble.incoming .bubble-preview-tail`).
 
 ---
 
