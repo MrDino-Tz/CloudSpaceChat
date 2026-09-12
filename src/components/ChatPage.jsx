@@ -1336,6 +1336,35 @@ export function ChatPage() {
     return () => clearTimeout(timer);
   }, [popupStep, activeRequestData, user.uid, closeRequestPopup]);
 
+  // Esc key: close the topmost open layer, then views, then the chat section (WhatsApp-style).
+  const escapeHandlerRef = useRef(null);
+  escapeHandlerRef.current = () => {
+    if (showRequestPopup) return closeRequestPopup();
+    if (pendingConfirmUser) return setPendingConfirmUser(null);
+    if (showLogoutConfirm) return setShowLogoutConfirm(false);
+    if (pendingFile) {
+      URL.revokeObjectURL(pendingFile.previewUrl);
+      return setPendingFile(null);
+    }
+    if (previewItem) return setPreviewItem(null);
+    if (pendingLink) return setPendingLink(null);
+    if (showProfile) return setShowProfile(false);
+    if (showGroupCreate) return setShowGroupCreate(false);
+    if (showNewMenu) return setShowNewMenu(false);
+    if (showMobileMenu) return setShowMobileMenu(false);
+    if (showSidePanel) return setShowSidePanel(false);
+    if (view !== "chats") return setView("chats");
+    if (activeConvId) return setActiveConvId(null);
+  };
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") escapeHandlerRef.current?.();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const startChatWithUser = useCallback(async (foundUser) => {
     if (startingChat) return;
     setStartingChat(true);
@@ -1741,8 +1770,10 @@ export function ChatPage() {
             )}
           </>
         ) : (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)" }}>
-            Select a conversation to start chatting
+          <div className="chat-empty-state">
+            <img src={`${import.meta.env.BASE_URL}csclogo.png`} alt="CloudSpaceChat" className="chat-empty-logo" />
+            <h2 className="chat-empty-title">CloudSpaceChat</h2>
+            <p className="chat-empty-subtitle">Select a conversation to start chatting</p>
           </div>
         )}
       </div>
