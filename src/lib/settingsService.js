@@ -11,6 +11,7 @@ export const DEFAULTS = {
   bubbleStyle: "rounded",        // "blocky" | "rounded" | "classic"
   wallpaper: "none",             // "none" | solid color hex | image URL
   fontSize: "medium",            // "small" | "medium" | "large"
+  fontFamily: "system",            // "system" | "modern" | "serif" | "mono"
   notificationsEnabled: true,
   soundOutgoing: true,
   soundIncoming: true,
@@ -67,6 +68,23 @@ export function applyStyleOverrides(settings) {
   // Font size
   const fonts = { small: "13px", medium: "14px", large: "16px" };
   root.style.setProperty("--msg-font-size", fonts[settings.fontSize] || "14px");
+
+  const families = {
+    system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    modern: '"Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
+    rounded: '"Nunito", "Segoe UI", Arial, sans-serif',
+    poppins: '"Poppins", "Segoe UI", Arial, sans-serif',
+    clean: '"Quicksand", "Segoe UI", Arial, sans-serif',
+    handwritten: '"Patrick Hand", "Comic Sans MS", cursive',
+    dancing: '"Dancing Script", cursive',
+    caveat: '"Caveat", cursive',
+    pacifico: '"Pacifico", cursive',
+    shadows: '"Shadows Into Light", cursive',
+    kalam: '"Kalam", cursive',
+    serif: 'Georgia, "Times New Roman", serif',
+    mono: '"Courier New", Consolas, Menlo, monospace',
+  };
+  root.style.setProperty("--msg-font-family", families[settings.fontFamily] || families.system);
 
   // Wallpaper
   const wp = settings.wallpaper === "custom" ? (settings.wallpaperUrl || "none") : settings.wallpaper;

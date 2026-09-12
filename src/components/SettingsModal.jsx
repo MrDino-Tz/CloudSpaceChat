@@ -32,7 +32,7 @@ function useSettingsState() {
     setSettings(next);
 
     if (key === "theme") applyTheme(value);
-    if (["bubbleStyle", "fontSize", "wallpaper", "wallpaperUrl"].includes(key)) applyStyleOverrides(next);
+    if (["bubbleStyle", "fontSize", "fontFamily", "wallpaper", "wallpaperUrl"].includes(key)) applyStyleOverrides(next);
     if (key === "presenceVisible") {
       localStorage.setItem("csc_presence_visible", String(value));
     }
@@ -127,24 +127,7 @@ function SecuritySection({ settings, update }) {
 
   return (
     <div className="settings-section">
-      <h3 className="settings-section-title">Security & Privacy</h3>
-
-      <div className="settings-card">
-        <SettingRow label="Theme" desc="App color scheme">
-          <div className="theme-mini-grid">
-            {THEMES.map((t) => (
-              <div key={t.id} className={`theme-mini ${settings.theme === t.id ? "active" : ""}`} onClick={() => update("theme", t.id)}>
-                <div className="theme-mini-swatch" style={{ background: t.bg }}>
-                  <div className="theme-mini-dot" style={{ background: t.primary }} />
-                </div>
-                <span>{t.label}</span>
-              </div>
-            ))}
-          </div>
-        </SettingRow>
-      </div>
-
-      <h3 className="settings-section-title" style={{ marginTop: 20 }}>Link Scanner</h3>
+      <h3 className="settings-section-title">Link Scanner</h3>
       <div className="settings-card">
         <SettingRow label="Scanning level" desc="How aggressively to check links">
           <Select
@@ -183,11 +166,80 @@ function SecuritySection({ settings, update }) {
   );
 }
 
+const PREVIEW_FAMILIES = {
+  system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  modern: '"Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
+  rounded: '"Nunito", "Segoe UI", Arial, sans-serif',
+  poppins: '"Poppins", "Segoe UI", Arial, sans-serif',
+  clean: '"Quicksand", "Segoe UI", Arial, sans-serif',
+  handwritten: '"Patrick Hand", "Comic Sans MS", cursive',
+  dancing: '"Dancing Script", cursive',
+  caveat: '"Caveat", cursive',
+  pacifico: '"Pacifico", cursive',
+  shadows: '"Shadows Into Light", cursive',
+  kalam: '"Kalam", cursive',
+  serif: 'Georgia, "Times New Roman", serif',
+  mono: '"Courier New", Consolas, Menlo, monospace',
+};
+
+const PREVIEW_RADII = { blocky: "8px", rounded: "16px", classic: "16px" };
+const PREVIEW_FONT_SIZES = { small: "13px", medium: "14px", large: "16px" };
+
+function BubblePreview({ settings }) {
+  const bs = settings.bubbleStyle || "rounded";
+  const radius = PREVIEW_RADII[bs] || "16px";
+  const font = PREVIEW_FONT_SIZES[settings.fontSize] || "14px";
+  const family = PREVIEW_FAMILIES[settings.fontFamily] || PREVIEW_FAMILIES.system;
+  const classic = bs === "classic";
+  const incomingRadius = classic ? `${radius} ${radius} ${radius} 4px` : radius;
+  const outgoingRadius = classic ? `${radius} ${radius} 4px ${radius}` : radius;
+
+  return (
+    <div className="bubble-preview">
+      <div className="bubble-preview-row">
+        <div
+          className={`bubble-preview-bubble incoming ${classic ? "classic" : ""}`}
+          style={{ borderRadius: incomingRadius, fontSize: font, fontFamily: family }}
+        >
+          Hey, how's it going?
+          {classic && <span className="bubble-preview-tail" />}
+        </div>
+      </div>
+      <div className="bubble-preview-row own">
+        <div
+          className={`bubble-preview-bubble outgoing ${classic ? "classic" : ""}`}
+          style={{ borderRadius: outgoingRadius, fontSize: font, fontFamily: family }}
+        >
+          All good, thanks!
+          {classic && <span className="bubble-preview-tail" />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChatSection({ settings, update }) {
   return (
     <div className="settings-section">
+      <h3 className="settings-section-title">Theme</h3>
+      <div className="settings-card">
+        <SettingRow label="App color scheme" desc="Choose how the app looks">
+          <div className="theme-mini-grid">
+            {THEMES.map((t) => (
+              <div key={t.id} className={`theme-mini ${settings.theme === t.id ? "active" : ""}`} onClick={() => update("theme", t.id)}>
+                <div className="theme-mini-swatch" style={{ background: t.bg }}>
+                  <div className="theme-mini-dot" style={{ background: t.primary }} />
+                </div>
+                <span>{t.label}</span>
+              </div>
+            ))}
+          </div>
+        </SettingRow>
+      </div>
+
       <h3 className="settings-section-title">Message Bubbles</h3>
       <div className="settings-card">
+        <BubblePreview settings={settings} />
         <SettingRow label="Corner style" desc="Shape of message bubbles">
           <Select
             value={settings.bubbleStyle}
@@ -208,6 +260,28 @@ function ChatSection({ settings, update }) {
               { value: "small", label: "Small" },
               { value: "medium", label: "Medium" },
               { value: "large", label: "Large" },
+            ]}
+          />
+        </SettingRow>
+
+        <SettingRow label="Font style" desc="Message text typeface">
+          <Select
+            value={settings.fontFamily || "system"}
+            onChange={(v) => update("fontFamily", v)}
+            options={[
+              { value: "system", label: "System default" },
+              { value: "modern", label: "Modern (Inter)" },
+              { value: "rounded", label: "Rounded (Nunito)" },
+              { value: "poppins", label: "Poppins" },
+              { value: "clean", label: "Clean (Quicksand)" },
+              { value: "handwritten", label: "Handwritten (Patrick Hand)" },
+              { value: "dancing", label: "Dancing Script" },
+              { value: "caveat", label: "Caveat" },
+              { value: "pacifico", label: "Pacifico" },
+              { value: "shadows", label: "Shadows Into Light" },
+              { value: "kalam", label: "Kalam" },
+              { value: "serif", label: "Serif (Georgia)" },
+              { value: "mono", label: "Monospace (Courier)" },
             ]}
           />
         </SettingRow>

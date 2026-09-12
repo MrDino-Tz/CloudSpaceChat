@@ -298,11 +298,35 @@ const CheckTicks = ({ delivered, read, incognito }) => {
   );
 };
 
-function MediaPlaceholder({ label, icon, onLoad }) {
+function getCloudinaryThumb(url, width = 240) {
+  if (!url || !url.includes("res.cloudinary.com")) return url;
+  return url.replace("/upload/", `/upload/w_${width},q_auto,f_auto/`);
+}
+
+function MediaPreviewPlaceholder({ type, url, label, onLoad }) {
   return (
-    <div className="media-placeholder" onClick={onLoad}>
-      <span className="media-placeholder-icon">{icon}</span>
-      <span className="media-placeholder-label">{label}</span>
+    <div
+      className={`media-preview-placeholder media-preview-${type}`}
+      onClick={onLoad}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter") onLoad(); }}
+    >
+      {type === "image" ? (
+        <img src={getCloudinaryThumb(url)} alt="" className="media-preview-media" loading="lazy" draggable={false} />
+      ) : type === "video" ? (
+        <video src={url} className="media-preview-media" preload="metadata" muted playsInline />
+      ) : null}
+      <div className="media-preview-overlay">
+        <span className="media-preview-play">
+          {type === "image" ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+          )}
+        </span>
+        <span className="media-preview-label">{label}</span>
+      </div>
     </div>
   );
 }
@@ -609,13 +633,13 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
           {msg.attachments?.map((att, i) => {
             if (att.type === "image") {
               if (!shouldAutoLoad("image") && !loadedMedia[i]) {
-                return <MediaPlaceholder key={i} label="Tap to load image" icon="🖼" onLoad={() => loadMedia(i)} />;
+                return <MediaPreviewPlaceholder key={i} type="image" url={att.url} label="Tap to load image" onLoad={() => loadMedia(i)} />;
               }
               return <img key={i} src={att.url} alt="" className="msg-attachment-img" onClick={() => onPreview?.({ type: "image", url: att.url })} />;
             }
             if (att.type === "video") {
               if (!shouldAutoLoad("video") && !loadedMedia[i]) {
-                return <MediaPlaceholder key={i} label="Tap to load video" icon="🎬" onLoad={() => loadMedia(i)} />;
+                return <MediaPreviewPlaceholder key={i} type="video" url={att.url} label="Tap to load video" onLoad={() => loadMedia(i)} />;
               }
               return (
                 <video key={i} src={att.url} controls className="msg-attachment-video" onClick={() => onPreview?.({ type: "video", url: att.url })} />
@@ -623,7 +647,7 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
             }
             if (att.type === "audio") {
               if (!shouldAutoLoad("audio") && !loadedMedia[i]) {
-                return <MediaPlaceholder key={i} label="Tap to load audio" icon="🎵" onLoad={() => loadMedia(i)} />;
+                return <MediaPreviewPlaceholder key={i} type="audio" url={att.url} label="Tap to load audio" onLoad={() => loadMedia(i)} />;
               }
               return <AudioAttachment key={i} att={att} isOwn={isOwn} />;
             }
