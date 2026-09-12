@@ -15,6 +15,7 @@ import { requestNotificationPermission, sendNotification, isInDnd, playSound } f
 import { incrementUnreadCount, resetUnreadCount, markMessagesAsReadFromList } from "@/lib/chatService";
 import { formatMsgTime, formatConvTime, formatDateSeparator, getDateKey } from "@/lib/time";
 import { sendChatRequest, listenForRequest, listenForNotifications, acceptRequest, denyRequest, verifyCode, receiverEnterCode, regenerateCode, markNotificationRead, deleteNotification, getPendingRequests } from "@/lib/requestService";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -84,6 +85,7 @@ const FILE_EXT_COLORS = {
   wav: { bg: "#fce7f3", color: "#db2777" },
   ogg: { bg: "#fce7f3", color: "#db2777" },
   m4a: { bg: "#fce7f3", color: "#db2777" },
+  webm: { bg: "#fce7f3", color: "#db2777" },
   js: { bg: "#fef9c3", color: "#a16207" },
   ts: { bg: "#dbeafe", color: "#2563eb" },
   py: { bg: "#dcfce7", color: "#16a34a" },
@@ -104,6 +106,78 @@ function formatSize(bytes) {
   if (!bytes) return "";
   if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
   return Math.round(bytes / 1024) + " KB";
+}
+
+function formatDuration(sec) {
+  const s = Math.max(0, Math.floor(sec || 0));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+const AUDIO_BAR_HEIGHTS = Array.from({ length: 32 }, () => 20 + Math.random() * 75);
+
+function AudioAttachment({ att, isOwn }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    const onEnded = () => { setPlaying(false); setCurrent(0); };
+    const onTime = () => setCurrent(el.currentTime || 0);
+    el.addEventListener("play", onPlay);
+    el.addEventListener("pause", onPause);
+    el.addEventListener("ended", onEnded);
+    el.addEventListener("timeupdate", onTime);
+    return () => {
+      el.removeEventListener("play", onPlay);
+      el.removeEventListener("pause", onPause);
+      el.removeEventListener("ended", onEnded);
+      el.removeEventListener("timeupdate", onTime);
+      el.pause();
+    };
+  }, [att.url]);
+
+  const toggle = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (el.paused) {
+      el.play().catch(() => {});
+    } else {
+      el.pause();
+    }
+  };
+
+  const display = current > 0 ? current : att.duration;
+
+  return (
+    <div className="audio-attachment">
+      <button type="button" className="audio-play-btn" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
+        {playing ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+        )}
+      </button>
+      <audio ref={audioRef} src={att.url} preload="none" />
+      <div className={`audio-waveform ${playing ? "playing" : ""}`}>
+        {AUDIO_BAR_HEIGHTS.map((h, j) => (
+          <div
+            key={j}
+            className="waveform-bar"
+            style={{
+              height: h + "%",
+              animationDelay: (j % 8) * 90 + "ms",
+              animationDuration: 300 + ((j * 37) % 300) + "ms",
+            }}
+          />
+        ))}
+      </div>
+      <div className="audio-time">{formatDuration(display)}</div>
+    </div>
+  );
 }
 
 const LINK_RX = /(https?:\/\/[^\s]+)/g;
@@ -551,21 +625,7 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
               if (!shouldAutoLoad("audio") && !loadedMedia[i]) {
                 return <MediaPlaceholder key={i} label="Tap to load audio" icon="🎵" onLoad={() => loadMedia(i)} />;
               }
-              return (
-                <div key={i} className="audio-attachment">
-                  <div className="audio-play-btn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                  </div>
-                  <div className="audio-waveform">
-                    {[...Array(24)].map((_, j) => <div key={j} className="waveform-bar" style={{ height: (20 + Math.random() * 80) + "%" }} />)}
-                  </div>
-                  <div className="audio-time">0:40</div>
-                  {isOwn && profile?.avatar && <img className="audio-avatar" src={profile.avatar} alt="" />}
-                  {isOwn && !profile?.avatar && <div className="audio-avatar" style={{background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'white'}}>{getAvatarFallback(profile?.displayName)}</div>}
-                  {!isOwn && sender?.avatar && <img className="audio-avatar" src={sender.avatar} alt="" />}
-                  {!isOwn && !sender?.avatar && <div className="audio-avatar" style={{background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'white'}}>{getAvatarFallback(sender?.displayName)}</div>}
-                </div>
-              );
+              return <AudioAttachment key={i} att={att} isOwn={isOwn} />;
             }
             const ext = att.name?.split(".").pop()?.toLowerCase();
             const previewTypes = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv"];
@@ -598,7 +658,7 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
               </div>
             </form>
           ) : (
-            msg.content && !["📷 Photo", "🎥 Video", "📎 File"].includes(msg.content) && (
+            msg.content && !["📷 Photo", "🎥 Video", "📎 File", "🎤 Voice note"].includes(msg.content) && (
               <div style={{ marginTop: msg.attachments?.length ? 6 : 0 }}>
                 {renderContent(msg.content, onLinkClick, settings)}
                 {msg.edited && <span className="msg-edited-tag"> (edited)</span>}
@@ -760,11 +820,19 @@ function MessageInput({ conversationId, senderId, onFileSelect, settings, replyT
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recTime, setRecTime] = useState(0);
   const fileRef = useRef(null);
   const menuRef = useRef(null);
   const typingSoundTimer = useRef(null);
   const typingFireTimer = useRef(null);
   const typingClearTimer = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const chunksRef = useRef([]);
+  const recTimerRef = useRef(null);
+  const recStartRef = useRef(0);
+  const recordingRef = useRef(false);
 
   useEffect(() => {
     const close = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
@@ -777,8 +845,69 @@ function MessageInput({ conversationId, senderId, onFileSelect, settings, replyT
       if (conversationId && senderId) clearTyping(conversationId, senderId);
       if (typingFireTimer.current) clearTimeout(typingFireTimer.current);
       if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
+      clearInterval(recTimerRef.current);
+      const stream = streamRef.current;
+      stream?.getTracks().forEach((t) => t.stop());
     };
   }, [conversationId, senderId]);
+
+  const startRecording = async () => {
+    if (recordingRef.current || sending) return;
+    setMenuOpen(false);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      recorder.start();
+      recordingRef.current = true;
+      setRecording(true);
+      setRecTime(0);
+      recStartRef.current = Date.now();
+      recTimerRef.current = setInterval(() => setRecTime(Math.floor((Date.now() - recStartRef.current) / 1000)), 250);
+      document.addEventListener("pointerup", stopRecording);
+    } catch (err) {
+      console.error("Mic access denied:", err);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recordingRef.current) return;
+    recordingRef.current = false;
+    setRecording(false);
+    clearInterval(recTimerRef.current);
+    document.removeEventListener("pointerup", stopRecording);
+    const recorder = mediaRecorderRef.current;
+    const stream = streamRef.current;
+    stream?.getTracks().forEach((t) => t.stop());
+    if (!recorder || recorder.state !== "recording") return;
+    const duration = Math.max(1, Math.round((Date.now() - recStartRef.current) / 1000));
+    await new Promise((res) => {
+      recorder.onstop = res;
+      recorder.stop();
+    });
+    const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+    if (!blob.size) return;
+    const file = new File([blob], "voice-note.webm", { type: blob.type });
+    setSending(true);
+    try {
+      const result = await uploadToCloudinary(file, { resourceType: "video", folder: `conversations/${conversationId}` });
+      await sendMessage(conversationId, senderId, {
+        content: "🎤 Voice note",
+        type: "audio",
+        attachments: [{ url: result.secure_url, type: "audio", name: "voice-note.webm", size: blob.size, duration }],
+        replyTo: replyTo ? { id: replyTo.id, content: replyTo.content, senderId: replyTo.senderId } : null,
+      });
+      onMessageSent?.();
+      if (settings?.soundOutgoing) playSound("outgoing");
+    } catch (err) {
+      console.error("Failed to send voice note:", err);
+    } finally {
+      setSending(false);
+    }
+  };
 
   const handleTyping = (e) => {
     setText(e.target.value);
@@ -885,13 +1014,33 @@ function MessageInput({ conversationId, senderId, onFileSelect, settings, replyT
           )}
         </div>
         <input type="file" ref={fileRef} style={{ display: "none" }} onChange={handleFile} />
-        <input type="text" className="msg-input" placeholder="Type a message..." value={text} onChange={handleInput} />
-        <button className="send-btn" type="submit" disabled={sending}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
-        </button>
+        {recording ? (
+          <div className="recording-bar">
+            <span className="rec-dot" />
+            <span className="rec-timer">{formatDuration(recTime)}</span>
+            <span className="rec-hint">Release to send</span>
+          </div>
+        ) : (
+          <input type="text" className="msg-input" placeholder="Type a message..." value={text} onChange={handleInput} />
+        )}
+        {!recording && !text.trim() && (
+          <div className={`mic-btn`} onPointerDown={startRecording} title="Hold to record voice note">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+              <line x1="8" y1="23" x2="16" y2="23" />
+            </svg>
+          </div>
+        )}
+        {!recording && text.trim() && (
+          <button className="send-btn" type="submit" disabled={sending}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        )}
       </div>
     </form>
   );

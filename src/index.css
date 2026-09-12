@@ -903,6 +903,23 @@ html[data-theme="dark"] body {
   background: #9ca3af;
   border-radius: 2px;
   min-height: 4px;
+  transform-origin: center;
+}
+
+.audio-waveform.playing .waveform-bar {
+  animation-name: wave-bounce;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+@keyframes wave-bounce {
+  from {
+    transform: scaleY(0.3);
+  }
+  to {
+    transform: scaleY(1);
+  }
 }
 
 .audio-time {
@@ -1468,6 +1485,62 @@ html[data-theme="dark"] body {
   color: var(--icon-color);
   cursor: pointer;
   margin: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+  touch-action: none;
+  animation: btn-pop 0.22s ease;
+}
+
+@keyframes btn-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.mic-btn-recording {
+  color: #ef4444;
+}
+
+.recording-bar {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: rec-pulse 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.rec-timer {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .send-btn {
@@ -1482,6 +1555,7 @@ html[data-theme="dark"] body {
   cursor: pointer;
   border: none;
   transition: opacity 0.2s;
+  animation: btn-pop 0.22s ease;
 }
 
 .send-btn:hover {

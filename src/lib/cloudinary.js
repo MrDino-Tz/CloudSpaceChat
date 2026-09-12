@@ -8,8 +8,9 @@ export async function uploadToCloudinary(file, options = {}) {
   if (options.folder) formData.append("folder", options.folder);
   if (options.publicId) formData.append("public_id", options.publicId);
 
+  const resourceType = options.resourceType || "auto";
   const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
+    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`,
     { method: "POST", body: formData },
   );
 

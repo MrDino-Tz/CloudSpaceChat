@@ -38,6 +38,7 @@ const FILE_ICONS = {
   wav: { color: "#db2777", label: "WAV" },
   ogg: { color: "#db2777", label: "OGG" },
   m4a: { color: "#db2777", label: "M4A" },
+  webm: { color: "#db2777", label: "WEBM" },
   js: { color: "#a16207", label: "JS" },
   ts: { color: "#2563eb", label: "TS" },
   py: { color: "#16a34a", label: "PY" },
