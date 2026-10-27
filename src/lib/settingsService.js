@@ -38,14 +38,17 @@ export function saveLocalSettings(settings) {
 
 export function applyTheme(themeId) {
   const THEMES = {
-    light: { primary: "#F59B1D" },
-    dark: { primary: "#F59B1D" },
-    purple: { primary: "#8b5cf6" },
-    blue: { primary: "#3b82f6" },
-    green: { primary: "#22c55e" },
+    light: { primary: "#111827", accent: "#111827" },
+    dark: { primary: "#111827", accent: "#e5e7eb" },
+    purple: { primary: "#8b5cf6", accent: "#8b5cf6" },
+    blue: { primary: "#3b82f6", accent: "#3b82f6" },
+    green: { primary: "#22c55e", accent: "#22c55e" },
   };
   const t = THEMES[themeId];
-  if (t) document.documentElement.style.setProperty("--primary-color", t.primary);
+  if (t) {
+    document.documentElement.style.setProperty("--primary-color", t.primary);
+    document.documentElement.style.setProperty("--primary-accent", t.accent);
+  }
 
   if (themeId === "dark") {
     document.documentElement.setAttribute("data-theme", "dark");

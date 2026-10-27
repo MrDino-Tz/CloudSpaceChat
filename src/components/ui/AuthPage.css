@@ -377,7 +377,7 @@
 
 .form-input:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(245, 155, 29, 0.12);
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.12);
   background: var(--bg-white);
 }
 

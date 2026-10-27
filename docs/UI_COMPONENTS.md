@@ -10,7 +10,8 @@ All colors reference CSS variables. Never use hardcoded hex values in new compon
 
 | Token | Light | Dark | Usage |
 |-------|-------|------|-------|
-| `--primary-color` | `#F59B1D` | `#F59B1D` | Buttons, accents, active states, badges |
+| `--primary-color` | `#111827` | `#111827` | Filled buttons, bubbles, badges |
+| `--primary-accent` | `#111827` | `#e5e7eb` | Accent text, icons, active states, focus borders |
 | `--bg-main` | `#f8f9fa` | `#000000` | Chat list background |
 | `--bg-white` | `#ffffff` | `#000000` | Cards, modals, panels |
 | `--text-main` | `#1a1a1a` | `#f5f5f5` | Primary text |
@@ -450,6 +451,16 @@ border-bottom: 1px solid var(--border-color);
 ```
 Label: `.setting-label` — 14px, font-weight 500  
 Description: `.setting-desc` — 12px, `var(--text-secondary)`
+
+### Change Password Form
+`PasswordSection` in `SettingsModal.jsx` uses `.password-form` / `.password-field`.
+
+- Rows: Current password → New password → Confirm new password.
+- Each input uses `.setting-input` inside `.password-input-wrap`, with an absolutely positioned `.password-eye` button (lucide `Eye` / `EyeOff`).
+- Inline messages: `.password-error` (danger) and `.password-success` (green).
+- `.password-forgot` is a borderless underlined text button shown only when `hasRealEmail(user)`.
+- `.password-actions` right-aligns Cancel (`.settings-btn-secondary`) and Update (`.settings-btn-primary`).
+- Visible only when the account has a `password` provider (`hasPasswordProvider` in `src/lib/accountService.js`).
 
 ### Theme Mini Grid
 ```css

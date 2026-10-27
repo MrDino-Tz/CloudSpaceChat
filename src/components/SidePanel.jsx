@@ -61,7 +61,7 @@ function MemberRow({ member, isAdmin, isSelf, currentUserId, admins, onAction, o
   const [contextOpen, setContextOpen] = useState(false);
   useEffect(() => { if (member?.uid) getUserProfile(member.uid).then(setUser); }, [member?.uid]);
   const name = user?.displayName || "U";
-  const avatarUrl = user?.avatar || `https://ui-avatars.com/api/?name=${name}&background=F59B1D&color=fff`;
+  const avatarUrl = user?.avatar || `https://ui-avatars.com/api/?name=${name}&background=111827&color=fff`;
   return (
     <div
       className="member-row"

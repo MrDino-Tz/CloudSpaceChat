@@ -14,7 +14,38 @@ The theming system operates in three layers:
 3. JS runtime overrides    →  applyTheme() + applyStyleOverrides() (settingsService.js)
 ```
 
-Layer 3 (JS) overrides Layers 1-2 (CSS) via inline styles on `document.documentElement.style`. Only `--primary-color` changes between color themes. Dark/light mode is controlled by the presence or absence of `data-theme="dark"` on the `<html>` element.
+Layer 3 (JS) overrides Layers 1-2 (CSS) via inline styles on `document.documentElement.style`. Each color theme sets `--primary-color` (fills) and `--primary-accent` (text/icons); the two diverge in dark mode. Dark/light mode is controlled by the presence or absence of `data-theme="dark"` on the `<html>` element.
+
+---
+
+## Color Decisions (recorded 2026-10-28)
+
+| Decision | Value | Why |
+|---|---|---|
+| Brand primary (replaces the old orange `#F59B1D`) | `#111827` | User-selected brand navy for the whole platform |
+| Brand accent defaults | `--primary-accent: #111827` | Accent text/icons/links in light mode |
+| Dark-mode accent | `--primary-accent: #e5e7eb` | The navy is ~1.1:1 against black, so accent text/icons/fills invert in dark mode |
+| Filled brand surfaces | `--primary-color: #111827` | Buttons, badges, avatars keep the navy (white content stays readable) |
+| Dark filled brand elements | `--primary-accent` background + `#111827` content | Small fills use the light accent in dark mode so they remain visible |
+| Neutral page frame | `#f3f4f6` light · `#000000` dark | Replaced the old `#fff4e5` orange frame |
+| Outgoing bubble | `#1a1a1a` | Unchanged near-black bubble, consistent with the navy direction |
+| Avatar fallback background | `#111827` | Same brand navy behind the white initial |
+| Accent themes | purple `#8b5cf6`, blue `#3b82f6`, green `#22c55e` | Unchanged — already readable on dark |
+| Unrelated semantic accent | `#f97316` (`.icon-orange`) | Deliberately kept out of the brand palette |
+
+### Auth provider buttons (`.auth-btn`)
+
+| Property | Value |
+|---|---|
+| Background | `var(--brand-dark)` = `#111827` |
+| Text / icon | `#FFFFFF` (`currentColor`) |
+| Shape | 8px radius, no border |
+| Padding / gap | `12px 20px` / `8px` |
+| Text | 14px, weight 500 |
+| Hover | `opacity: 0.85` |
+| “Last used” badge | `rgba(255,255,255,0.15)` bg, 4px radius, 10px/600 uppercase |
+| Divider line | `#e5e7eb` light · `#262626` dark |
+| Divider text | `#8a8d91` light · `#a3a3a3` dark |
 
 ---
 
@@ -24,7 +55,8 @@ Layer 3 (JS) overrides Layers 1-2 (CSS) via inline styles on `document.documentE
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `--primary-color` | `#F59B1D` | Official platform orange — buttons, accents, links |
+| `--primary-color` | `#111827` | Brand navy — filled buttons, bubbles, badges |
+| `--primary-accent` | `#111827` | Accent text, icons, links, focus borders |
 | `--bg-main` | `#f8f9fa` | Light gray background for chat list panel |
 | `--bg-white` | `#ffffff` | White backgrounds (modals, cards) |
 | `--text-main` | `#1a1a1a` | Primary text color |
@@ -53,7 +85,8 @@ Layer 3 (JS) overrides Layers 1-2 (CSS) via inline styles on `document.documentE
 | `--hover-bg` | `#f3f4f6` | `#111111` |
 | `--msg-incoming` | `#f3f4f6` | `#111111` |
 | `--icon-color` | `#6b7280` | `#a3a3a3` |
-| body `background` | `#fff4e5` | `#000000` |
+| `--primary-accent` | `#111827` | `#e5e7eb` |
+| body `background` | `#f3f4f6` | `#000000` |
 | scrollbar thumb | `var(--border-color)` | `#2e2e2e` |
 | modal border | `var(--border-color)` | `#2a2a2a` |
 
@@ -75,13 +108,13 @@ Layer 3 (JS) overrides Layers 1-2 (CSS) via inline styles on `document.documentE
 
 | ID | Label | `--primary-color` | Dark Mode? | Swatch BG |
 |----|-------|--------------------|------------|-----------|
-| `light` | Light | `#F59B1D` (orange) | No | `#fff4e5` |
-| `dark` | Dark | `#F59B1D` (orange) | Yes | `#1a1a1a` |
+| `light` | Light | `#111827` (navy) | No | `#f3f4f6` |
+| `dark` | Dark | `#111827` (navy, accent `#e5e7eb`) | Yes | `#1a1a1a` |
 | `purple` | Purple | `#8b5cf6` | No | `#f5f3ff` |
 | `blue` | Blue | `#3b82f6` | No | `#eff6ff` |
 | `green` | Green | `#22c55e` | No | `#f0fdf4` |
 
-**Note:** The `bg` values in the picker are only for the swatch preview — they are not applied as CSS variables. The only variable that changes between themes is `--primary-color`. The `dark` theme is the only one that sets `data-theme="dark"`.
+**Note:** The `bg` values in the picker are only for the swatch preview — they are not applied as CSS variables. The theme sets both `--primary-color` (fills) and `--primary-accent` (text/icons), which diverge in dark mode so the navy stays readable. The `dark` theme is the only one that sets `data-theme="dark"`.
 
 ### Default Theme
 
@@ -95,14 +128,17 @@ theme: "dark"  // DEFAULTS.theme in settingsService.js
 // settingsService.js:38-54
 export function applyTheme(themeId) {
   const THEMES = {
-    light: { primary: "#F59B1D" },
-    dark:  { primary: "#F59B1D" },
-    purple: { primary: "#8b5cf6" },
-    blue:   { primary: "#3b82f6" },
-    green:  { primary: "#22c55e" },
+    light: { primary: "#111827", accent: "#111827" },
+    dark:  { primary: "#111827", accent: "#e5e7eb" },
+    purple: { primary: "#8b5cf6", accent: "#8b5cf6" },
+    blue:   { primary: "#3b82f6", accent: "#3b82f6" },
+    green:  { primary: "#22c55e", accent: "#22c55e" },
   };
   const t = THEMES[themeId];
-  if (t) document.documentElement.style.setProperty("--primary-color", t.primary);
+  if (t) {
+    document.documentElement.style.setProperty("--primary-color", t.primary);
+    document.documentElement.style.setProperty("--primary-accent", t.accent);
+  }
 
   if (themeId === "dark") {
     document.documentElement.setAttribute("data-theme", "dark");
@@ -277,10 +313,11 @@ Live preview in Settings (Message Bubbles) uses the same stacks.
 
 To add a new color theme:
 
-1. Add entry to `THEMES` in `applyTheme()` (`settingsService.js:39-44`):
+1. Add entry to `THEMES` in `applyTheme()` (`settingsService.js:39-46`):
    ```js
-   red: { primary: "#ef4444" },
+   red: { primary: "#ef4444", accent: "#ef4444" },
    ```
+   For a dark brand color, give the theme a lighter `accent` (see the `dark` entry).
 
 2. Add entry to `THEMES` array in `SettingsPanel` (`SettingsModal.jsx:14-20`):
    ```js

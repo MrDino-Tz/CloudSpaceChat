@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700&family=Patrick+Hand&family=Quicksand:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Dancing+Script:wght@400;600;700&family=Caveat:wght@400;600;700&family=Pacifico&family=Shadows+Into+Light&family=Kalam:wght@400;700&display=swap');
 
 :root {
-  --primary-color: #F59B1D; /* Official platform orange */
+  --primary-color: #111827; /* Official platform color */
   --bg-main: #f8f9fa; /* Light gray for chat list */
   --bg-white: #ffffff;
   --text-main: #1a1a1a;
@@ -18,6 +18,7 @@
   --chat-bg: none;
   --chat-bg-size: auto;
   --brand-dark: #111827; /* Dark brand color from AuthPage */
+  --primary-accent: #111827; /* Readable accent for text/icons */
   
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -26,6 +27,7 @@
 }
 
 html[data-theme="dark"] {
+  --primary-accent: #e5e7eb; /* Brand navy is unreadable on black */
   --bg-main: #000000;
   --bg-white: #000000;
   --text-main: #f5f5f5;
@@ -77,7 +79,7 @@ body {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background-color: #fff4e5; /* Outer background to frame the app, matching orange */
+  background-color: #f3f4f6; /* Outer background to frame the app, neutral frame */
 }
 
 html[data-theme="dark"] body {
@@ -104,7 +106,7 @@ html[data-theme="dark"] body {
 .font-bold { font-weight: 700; }
 
 .text-secondary { color: var(--text-secondary); }
-.text-primary { color: var(--primary-color); }
+.text-primary { color: var(--primary-accent); }
 .text-white { color: #fff; }
 
 .truncate {
@@ -159,11 +161,11 @@ html[data-theme="dark"] body {
 }
 
 .nav-item:hover {
-  color: var(--primary-color);
+  color: var(--primary-accent);
 }
 
 .nav-item.active {
-  color: var(--primary-color);
+  color: var(--primary-accent);
 }
 
 .nav-item svg {
@@ -646,7 +648,7 @@ html[data-theme="dark"] body {
 .reply-preview-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--primary-color);
+  color: var(--primary-accent);
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
@@ -685,7 +687,7 @@ html[data-theme="dark"] body {
 }
 
 .msg-edit-input {
-  border: 1px solid var(--primary-color);
+  border: 1px solid var(--primary-accent);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
@@ -728,7 +730,7 @@ html[data-theme="dark"] body {
 }
 
 .msg-star-indicator {
-  color: var(--primary-color);
+  color: var(--primary-accent);
   font-size: 12px;
   margin-right: 4px;
 }
@@ -743,7 +745,7 @@ html[data-theme="dark"] body {
   border-radius: 10px;
   padding: 12px 14px;
   margin-bottom: 16px;
-  border-left: 3px solid var(--primary-color);
+  border-left: 3px solid var(--primary-accent);
 }
 
 .msg-info-preview-text {
@@ -1097,7 +1099,7 @@ html[data-theme="dark"] body {
   gap: 8px;
   padding: 8px 0;
   font-size: 13px;
-  color: var(--primary-color);
+  color: var(--primary-accent);
   text-decoration: none;
 }
 
@@ -1249,7 +1251,7 @@ html[data-theme="dark"] body {
 }
 
 .doc-viewer-fallback-link {
-  color: var(--primary-color);
+  color: var(--primary-accent);
   font-weight: 600;
   text-decoration: underline;
 }
@@ -1667,7 +1669,7 @@ html[data-theme="dark"] body {
 }
 
 .group-link {
-  color: var(--primary-color);
+  color: var(--primary-accent);
   font-size: 13px;
   text-decoration: none;
   display: flex;
@@ -1693,7 +1695,7 @@ html[data-theme="dark"] body {
 }
 
 .see-all {
-  color: var(--primary-color);
+  color: var(--primary-accent);
   font-size: 12px;
   text-decoration: none;
   cursor: pointer;
@@ -1864,12 +1866,12 @@ html[data-theme="dark"] .modal-box {
 }
 
 .theme-card:hover {
-  border-color: var(--primary-color);
+  border-color: var(--primary-accent);
 }
 
 .theme-card-active {
-  border-color: var(--primary-color);
-  background: #fff4e5;
+  border-color: var(--primary-accent);
+  background: #f3f4f6;
 }
 
 .theme-preview {
@@ -1920,7 +1922,7 @@ html[data-theme="dark"] .modal-box {
 }
 
 .form-input:focus {
-  border-color: var(--primary-color);
+  border-color: var(--primary-accent);
 }
 
 .form-textarea {
@@ -2254,7 +2256,7 @@ html[data-theme="dark"] .modal-box {
 
 .settings-tab.active {
   background: var(--hover-bg);
-  color: var(--primary-color);
+  color: var(--primary-accent);
   font-weight: 600;
 }
 
@@ -2335,7 +2337,7 @@ html[data-theme="dark"] .modal-box {
 }
 
 .setting-select:focus {
-  border-color: var(--primary-color);
+  border-color: var(--primary-accent);
 }
 
 .setting-textarea {
@@ -2353,7 +2355,7 @@ html[data-theme="dark"] .modal-box {
 }
 
 .setting-textarea:focus {
-  border-color: var(--primary-color);
+  border-color: var(--primary-accent);
 }
 
 .setting-input {
@@ -2368,7 +2370,90 @@ html[data-theme="dark"] .modal-box {
 }
 
 .setting-input:focus {
-  border-color: var(--primary-color);
+  border-color: var(--primary-accent);
+}
+
+/* Change password (Settings → Security) */
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.password-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.password-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrap .setting-input {
+  padding-right: 38px;
+}
+
+.password-eye {
+  position: absolute;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.password-eye:hover {
+  background: var(--bg-white);
+  color: var(--text-main);
+}
+
+.password-error {
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.password-success {
+  font-size: 12px;
+  color: #16a34a;
+  padding: 0 0 12px;
+}
+
+.password-forgot {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary-accent);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.password-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.password-actions .settings-btn {
+  flex: none;
+  padding: 8px 16px;
 }
 
 /* Toggle switch */
@@ -2549,7 +2634,7 @@ html[data-theme="dark"] .modal-box {
 
 .settings-tab-inline.active {
   background: var(--hover-bg);
-  color: var(--primary-color);
+  color: var(--primary-accent);
   font-weight: 600;
 }
 
@@ -2585,7 +2670,7 @@ html[data-theme="dark"] .modal-box {
 }
 
 .theme-mini.active {
-  border-color: var(--primary-color);
+  border-color: var(--primary-accent);
   background: var(--hover-bg);
 }
 
@@ -2964,7 +3049,7 @@ html[data-theme="dark"] .modal-box {
 
 .group-row-check.checked {
   background: var(--primary-color);
-  border-color: var(--primary-color);
+  border-color: var(--primary-accent);
 }
 
 .group-row-check.checked svg {
@@ -3055,7 +3140,7 @@ html[data-theme="dark"] .modal-box {
 
 .member-row-tag {
   font-size: 11px;
-  color: var(--primary-color);
+  color: var(--primary-accent);
   font-weight: 600;
   margin-top: 1px;
 }
@@ -3070,7 +3155,7 @@ html[data-theme="dark"] .modal-box {
 }
 
 .more-members-row:hover {
-  color: var(--primary-color);
+  color: var(--primary-accent);
 }
 
 .member-rows-list {
@@ -3164,7 +3249,7 @@ html[data-theme="dark"] .modal-box {
   gap: 6px;
   align-self: flex-start;
   font-size: 14px;
-  color: var(--primary-color);
+  color: var(--primary-accent);
   cursor: pointer;
   font-weight: 500;
   margin-bottom: 16px;
@@ -3420,7 +3505,7 @@ html[data-theme="dark"] .modal-box {
 }
 
 .add-member-search:focus {
-  border-color: var(--primary-color);
+  border-color: var(--primary-accent);
 }
 
 .add-member-list {
@@ -3648,7 +3733,7 @@ html[data-theme="dark"] .modal-box {
 
 .encryption-banner svg {
   flex-shrink: 0;
-  color: var(--primary-color);
+  color: var(--primary-accent);
 }
 
 /* ── Responsive / Mobile Styles ── */
@@ -3897,7 +3982,7 @@ html[data-theme="dark"] .modal-box {
 }
 
 .notif-item.unread {
-  background: rgba(245, 155, 29, 0.06);
+  background: rgba(17, 24, 39, 0.06);
 }
 
 .notif-item:hover {
@@ -4004,7 +4089,7 @@ html[data-theme="dark"] .modal-box {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--primary-color);
+  color: var(--primary-accent);
 }
 
 .request-popup-actions {
@@ -4036,14 +4121,14 @@ html[data-theme="dark"] .modal-box {
 }
 
 .otp-box:focus {
-  border-color: var(--primary-color);
+  border-color: var(--primary-accent);
 }
 
 .otp-display {
   font-size: 32px;
   font-weight: 800;
   letter-spacing: 8px;
-  color: var(--primary-color);
+  color: var(--primary-accent);
   padding: 12px 20px;
   background: var(--hover-bg);
   border-radius: 12px;
@@ -4119,4 +4204,52 @@ html[data-theme="dark"] .modal-box {
 @keyframes typingBounce {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ── Brand fills in dark mode ───────────────────────────────────────────────
+   The brand navy (#111827) disappears against black, so filled brand elements
+   switch to the readable accent with dark content in dark mode. */
+html[data-theme="dark"] .unread-badge,
+html[data-theme="dark"] .nav-unread-badge,
+html[data-theme="dark"] .notif-badge,
+html[data-theme="dark"] .notif-accept,
+html[data-theme="dark"] .verify-btn,
+html[data-theme="dark"] .msg-edit-btn.save,
+html[data-theme="dark"] .msg-info-badge,
+html[data-theme="dark"] .msg-info-user-letter,
+html[data-theme="dark"] .doc-viewer-download,
+html[data-theme="dark"] .chat-avatar-letter,
+html[data-theme="dark"] .msg-avatar-letter-sm,
+html[data-theme="dark"] .profile-avatar-letter,
+html[data-theme="dark"] .profile-avatar-letter-lg,
+html[data-theme="dark"] .group-chip-letter,
+html[data-theme="dark"] .group-row-letter,
+html[data-theme="dark"] .group-create-btn,
+html[data-theme="dark"] .add-member-letter,
+html[data-theme="dark"] .admin-badge,
+html[data-theme="dark"] .more-members,
+html[data-theme="dark"] .send-btn,
+html[data-theme="dark"] .file-preview-send,
+html[data-theme="dark"] .settings-btn-primary,
+html[data-theme="dark"] .profile-edit-form .modal-submit-btn,
+html[data-theme="dark"] .media-preview-audio .media-preview-play,
+html[data-theme="dark"] .group-row-check.checked {
+  background: var(--primary-accent);
+  background-color: var(--primary-accent);
+  color: #111827;
+}
+
+html[data-theme="dark"] .msg-reply-bar,
+html[data-theme="dark"] .upload-progress,
+html[data-theme="dark"] .file-preview-progress-fill {
+  background: var(--primary-accent);
+  background-color: var(--primary-accent);
+}
+
+html[data-theme="dark"] .toggle input:checked + .toggle-slider {
+  background: var(--primary-accent);
+}
+
+html[data-theme="dark"] .toggle input:checked + .toggle-slider::before {
+  background: #111827;
 }

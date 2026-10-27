@@ -405,6 +405,9 @@ service firebase.storage {
   - Read receipts
   - Online status visibility
 - **Security Settings**:
+  - Change password — available to email/password accounts only (hidden for Google/GitHub-only users)
+  - Requires reauthentication with the current password before `updatePassword`
+  - “Forgot current password?” sends a reset email for real email addresses (hidden for the internal `@openspacechat.internal` phone-account address)
   - Two-factor authentication
   - Session management
   - Active devices

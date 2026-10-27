@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { loadSettings, saveSettings, applyTheme, applyStyleOverrides, DEFAULTS } from "@/lib/settingsService";
+import {
+  changePassword,
+  hasPasswordProvider,
+  hasRealEmail,
+  passwordErrorMessage,
+  sendPasswordReset,
+} from "@/lib/accountService";
 
-import { Shield, MessageCircle, Bell, Database } from "lucide-react";
+import { Shield, MessageCircle, Bell, Database, Eye, EyeOff } from "lucide-react";
 
 const TABS = [
   { id: "security", icon: <Shield size={16} />, label: "Security" },
@@ -12,8 +19,8 @@ const TABS = [
 ];
 
 const THEMES = [
-  { id: "light", label: "Light", primary: "#F59B1D", bg: "#fff4e5" },
-  { id: "dark", label: "Dark", primary: "#F59B1D", bg: "#1a1a1a" },
+  { id: "light", label: "Light", primary: "#111827", bg: "#f3f4f6" },
+  { id: "dark", label: "Dark", primary: "#111827", bg: "#1a1a1a" },
   { id: "purple", label: "Purple", primary: "#8b5cf6", bg: "#f5f3ff" },
   { id: "blue", label: "Blue", primary: "#3b82f6", bg: "#eff6ff" },
   { id: "green", label: "Green", primary: "#22c55e", bg: "#f0fdf4" },
@@ -117,6 +124,138 @@ function Select({ value, onChange, options }) {
   );
 }
 
+function PasswordSection() {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [show, setShow] = useState({ current: false, next: false, confirm: false });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!user || !hasPasswordProvider(user)) return null;
+  const canReset = hasRealEmail(user);
+
+  const resetFields = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setShow({ current: false, next: false, confirm: false });
+    setError("");
+  };
+
+  const toggle = (key) => setShow((s) => ({ ...s, [key]: !s[key] }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (!currentPassword) return setError("Enter your current password.");
+    if (newPassword.length < 6) return setError("New password must be at least 6 characters.");
+    if (newPassword === currentPassword) return setError("New password must be different from the current one.");
+    if (newPassword !== confirmPassword) return setError("New passwords do not match.");
+
+    setBusy(true);
+    try {
+      await changePassword(user, currentPassword, newPassword);
+      resetFields();
+      setOpen(false);
+      setSuccess("Password updated.");
+    } catch (err) {
+      setError(passwordErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleForgot = async () => {
+    setError("");
+    setSuccess("");
+    try {
+      await sendPasswordReset(user);
+      setSuccess(`Password reset email sent to ${user.email}.`);
+    } catch (err) {
+      setError(passwordErrorMessage(err));
+    }
+  };
+
+  const passwordInput = (id, label, value, onChange, key) => (
+    <div className="password-field">
+      <label className="password-label" htmlFor={id}>{label}</label>
+      <div className="password-input-wrap">
+        <input
+          id={id}
+          type={show[key] ? "text" : "password"}
+          className="setting-input"
+          value={value}
+          onChange={(e) => { onChange(e.target.value); setError(""); }}
+          disabled={busy}
+          autoComplete={key === "current" ? "current-password" : "new-password"}
+        />
+        <button
+          type="button"
+          className="password-eye"
+          onClick={() => toggle(key)}
+          aria-label={show[key] ? "Hide password" : "Show password"}
+        >
+          {show[key] ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <h3 className="settings-section-title" style={{ marginTop: 20 }}>Password</h3>
+      <div className="settings-card">
+        {!open ? (
+          <SettingRow label="Change password" desc="Update the password you use to sign in">
+            <button
+              type="button"
+              className="settings-btn settings-btn-primary"
+              style={{ flex: "none", padding: "8px 16px" }}
+              onClick={() => { setError(""); setSuccess(""); setOpen(true); }}
+            >
+              Change
+            </button>
+          </SettingRow>
+        ) : (
+          <form className="password-form" onSubmit={handleSubmit}>
+            {passwordInput("current-password", "Current password", currentPassword, setCurrentPassword, "current")}
+            {passwordInput("new-password", "New password", newPassword, setNewPassword, "next")}
+            {passwordInput("confirm-password", "Confirm new password", confirmPassword, setConfirmPassword, "confirm")}
+
+            {error && <p className="password-error">{error}</p>}
+
+            {canReset && (
+              <button type="button" className="password-forgot" onClick={handleForgot} disabled={busy}>
+                Forgot current password?
+              </button>
+            )}
+
+            <div className="password-actions">
+              <button
+                type="button"
+                className="settings-btn settings-btn-secondary"
+                onClick={() => { resetFields(); setOpen(false); }}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="settings-btn settings-btn-primary" disabled={busy}>
+                {busy ? "Updating…" : "Update password"}
+              </button>
+            </div>
+          </form>
+        )}
+        {success && <p className="password-success">{success}</p>}
+      </div>
+    </>
+  );
+}
+
 function SecuritySection({ settings, update }) {
   const [customDomains, setCustomDomains] = useState(settings.trustedDomains || "");
 
@@ -162,6 +301,8 @@ function SecuritySection({ settings, update }) {
           <Toggle value={settings.incognito} onChange={(v) => update("incognito", v)} />
         </SettingRow>
       </div>
+
+      <PasswordSection />
     </div>
   );
 }
