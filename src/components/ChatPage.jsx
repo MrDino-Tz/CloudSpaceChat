@@ -642,7 +642,9 @@ function MessageBubble({ msg, isOwn, onPreview, onLinkClick, onReply, settings }
                 return <MediaPreviewPlaceholder key={i} type="video" url={att.url} label="Tap to load video" onLoad={() => loadMedia(i)} />;
               }
               return (
-                <video key={i} src={att.url} controls className="msg-attachment-video" onClick={() => onPreview?.({ type: "video", url: att.url })} />
+                <video key={i} src={att.url} poster={att.url.replace(/\.[^.]+$/, '.jpg')} controls className="msg-attachment-video" onClick={() => onPreview?.({ type: "video", url: att.url })}>
+                  <source src={att.url} type="video/mp4" />
+                </video>
               );
             }
             if (att.type === "audio") {
@@ -737,7 +739,9 @@ function PreviewModal({ item, onClose }) {
       )}
 
       {item.type === "video" && (
-        <video src={item.url} controls autoPlay className="image-viewer-img video-viewer" onClick={(e) => e.stopPropagation()} />
+        <video src={item.url} controls autoPlay className="image-viewer-img video-viewer" onClick={(e) => e.stopPropagation()}>
+          <source src={item.url} type="video/mp4" />
+        </video>
       )}
 
       {item.type === "document" && (

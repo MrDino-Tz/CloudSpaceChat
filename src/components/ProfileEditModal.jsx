@@ -8,6 +8,7 @@ export function ProfileEditModal({ onClose }) {
   const { user, profile, setProfile } = useAuth();
   const [displayName, setDisplayName] = useState(profile?.displayName || "");
   const [username, setUsername] = useState(profile?.username || "");
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phoneNumber || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [status, setStatus] = useState(profile?.status || "");
   const [avatar, setAvatar] = useState(profile?.avatar || "");
@@ -43,6 +44,7 @@ export function ProfileEditModal({ onClose }) {
       await updateUserProfile(user.uid, {
         displayName: displayName.trim(),
         username: username.trim(),
+        phoneNumber: phoneNumber.trim(),
         bio: bio.trim(),
         status: status.trim(),
         avatar,
@@ -51,6 +53,7 @@ export function ProfileEditModal({ onClose }) {
         ...prev,
         displayName: displayName.trim(),
         username: username.trim(),
+        phoneNumber: phoneNumber.trim(),
         bio: bio.trim(),
         status: status.trim(),
         avatar,
@@ -109,6 +112,11 @@ export function ProfileEditModal({ onClose }) {
             <div className="form-group">
               <label className="form-label" htmlFor="edit-username">Username</label>
               <input id="edit-username" type="text" className="form-input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="@username" />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="edit-phone">Phone Number</label>
+              <input id="edit-phone" type="tel" className="form-input" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+255 712 345 678" />
             </div>
 
             <div className="form-group">

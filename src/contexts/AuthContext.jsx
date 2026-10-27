@@ -39,8 +39,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = async () => {
-    if (user) await setUserOffline(user.uid);
-    await signOut(auth);
+    try {
+      if (user) await setUserOffline(user.uid);
+    } catch (err) {
+      console.warn('Failed to set user offline during logout:', err);
+    } finally {
+      await signOut(auth);
+    }
   };
 
   return (
