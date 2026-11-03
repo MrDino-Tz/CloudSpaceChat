@@ -1,5 +1,28 @@
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, query, where, serverTimestamp, limit } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, onSnapshot, query, where, serverTimestamp, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+
+export const PRESENCE_STALE_MS = 2 * 60 * 1000;
+
+/** Firebase Timestamp / Date / number → milliseconds. */
+export function timestampMillis(value) {
+  if (!value) return 0;
+  if (typeof value === "number") return value;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+  if (value instanceof Date) return value.getTime();
+  return 0;
+}
+
+/**
+ * Treat stale `isOnline` flags as offline. Crashed tabs and killed apps cannot
+ * always write `isOnline: false`, so freshness is based on the heartbeat.
+ */
+export function isUserOnline(profile) {
+  if (!profile?.isOnline) return false;
+  const lastSeen = timestampMillis(profile.lastSeen);
+  if (!lastSeen) return true;
+  return Date.now() - lastSeen < PRESENCE_STALE_MS;
+}
 
 export async function createUserProfile(user) {
   const userRef = doc(db, "users", user.uid);
@@ -49,16 +72,45 @@ export async function getUserProfile(uid) {
   return snap.exists() ? { ...snap.data(), id: snap.id } : null;
 }
 
+/** Live profile subscription used for presence dots and the active chat header. */
+export function listenToUserProfile(uid, callback, onError) {
+  if (!uid) return () => {};
+  return onSnapshot(
+    doc(db, "users", uid),
+    (snap) => callback(snap.exists() ? { ...snap.data(), id: snap.id } : null),
+    (err) => {
+      console.warn("listenToUserProfile error:", err);
+      onError?.(err);
+    },
+  );
+}
+
 export async function updateUserProfile(uid, data) {
   await updateDoc(doc(db, "users", uid), { ...data, updatedAt: serverTimestamp() });
 }
 
 export async function setUserOnline(uid) {
-  await updateDoc(doc(db, "users", uid), { isOnline: true });
+  if (!uid) return;
+  try {
+    await updateDoc(doc(db, "users", uid), {
+      isOnline: true,
+      lastSeen: serverTimestamp(),
+    });
+  } catch (err) {
+    console.warn("setUserOnline failed:", err);
+  }
 }
 
 export async function setUserOffline(uid) {
-  await updateDoc(doc(db, "users", uid), { isOnline: false, lastSeen: serverTimestamp() });
+  if (!uid) return;
+  try {
+    await updateDoc(doc(db, "users", uid), {
+      isOnline: false,
+      lastSeen: serverTimestamp(),
+    });
+  } catch (err) {
+    console.warn("setUserOffline failed:", err);
+  }
 }
 
 export async function getAllUsers(currentUid, maxResults = 50) {

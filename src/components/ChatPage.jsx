@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { listenToConversations, listenToMessages, sendMessage, getConversation, createPrivateConversation, deleteMessageForMe, deleteMessageForEveryone, editMessage, toggleStarMessage, setTyping, clearTyping } from "@/lib/chatService";
-import { getUserProfile, searchUsers, getAllUsers } from "@/lib/userService";
+import { getUserProfile, listenToUserProfile, isUserOnline, searchUsers, getAllUsers } from "@/lib/userService";
 import { usePresence } from "@/hooks/usePresence";
 import { getAvatarUrl, getAvatarFallback } from "@/lib/avatar";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
@@ -11,11 +11,28 @@ import { FilePreviewModal } from "@/components/FilePreviewModal";
 import { SettingsPanel } from "@/components/SettingsModal";
 import { GroupCreateModal } from "@/components/GroupCreateModal";
 import { getLocalSettings, applyStyleOverrides } from "@/lib/settingsService";
-import { requestNotificationPermission, sendNotification, isInDnd, playSound } from "@/lib/notificationService";
+import { registerNotificationServiceWorker, requestNotificationPermission, sendNotification, isInDnd, playSound } from "@/lib/notificationService";
 import { incrementUnreadCount, resetUnreadCount, markMessagesAsReadFromList } from "@/lib/chatService";
 import { formatMsgTime, formatConvTime, formatDateSeparator, getDateKey } from "@/lib/time";
 import { sendChatRequest, listenForRequest, listenForNotifications, acceptRequest, denyRequest, verifyCode, receiverEnterCode, regenerateCode, markNotificationRead, deleteNotification, getPendingRequests } from "@/lib/requestService";
 import { uploadToCloudinary } from "@/lib/cloudinary";
+
+function lastMessageKey(conv) {
+  const lm = conv?.lastMessage;
+  if (!lm) return null;
+  const ts = lm.timestamp?.toMillis?.()
+    || (lm.timestamp?.seconds ? lm.timestamp.seconds * 1000 : 0);
+  return `${conv.id}:${ts}:${lm.senderId || ""}:${lm.type || "text"}`;
+}
+
+function messagePreview(lm) {
+  if (!lm) return "";
+  if (lm.type === "image") return "📷 Photo";
+  if (lm.type === "video") return "🎥 Video";
+  if (lm.type === "audio") return "🎤 Voice message";
+  if (lm.type === "file") return `📎 ${lm.attachments?.[0]?.name || "Attachment"}`;
+  return lm.content || "Sent an attachment";
+}
 
 function ConversationItem({ conv, active, onClick }) {
   const { user } = useAuth();
@@ -23,14 +40,15 @@ function ConversationItem({ conv, active, onClick }) {
   const [otherUser, setOtherUser] = useState(null);
 
   useEffect(() => {
-    if (otherUid) getUserProfile(otherUid).then(setOtherUser);
+    if (!otherUid) return;
+    return listenToUserProfile(otherUid, setOtherUser);
   }, [otherUid]);
 
   const name = conv.type === "group" ? conv.name : otherUser?.displayName || "User";
   const lm = conv.lastMessage || {};
   const hasLink = lm.content && LINK_RX.test(lm.content);
   const preview = lm.type === "image" ? "📷 Photo" : lm.type === "video" ? "🎥 Video" : lm.type === "file" ? `📎 ${lm.attachments?.[0]?.name || "File"}` : hasLink ? "🔗 Link" : lm.content || "No messages yet";
-  const isOnline = otherUser?.isOnline;
+  const isOnline = isUserOnline(otherUser);
   const unread = conv.unreadCount?.[user?.uid] || 0;
   const convTime = formatConvTime(conv.updatedAt || conv.lastMessage?.timestamp);
 
@@ -1084,7 +1102,7 @@ function UserSearchResult({ foundUser, onStartChat }) {
         ) : (
           <div className="chat-avatar chat-avatar-letter">{getAvatarFallback(foundUser.displayName)}</div>
         )}
-        <div className={`status-dot ${foundUser.isOnline ? "status-online" : "status-offline"}`} />
+        <div className={`status-dot ${isUserOnline(foundUser) ? "status-online" : "status-offline"}`} />
       </div>
       <div className="chat-info">
         <div className="chat-header-row">
@@ -1141,9 +1159,34 @@ export function ChatPage() {
   const [otpValues, setOtpValues] = useState(["","","","","",""]);
 
   usePresence(user);
-  const prevMsgLen = useRef(0);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [inAppToast, setInAppToast] = useState(null);
+  const lastConvNotifRef = useRef(new Map());
+  const convNotifSeededRef = useRef(false);
 
-  useEffect(() => { requestNotificationPermission(); }, []);
+  useEffect(() => {
+    registerNotificationServiceWorker();
+    // Mobile browsers often ignore permission prompts that aren't tied to a
+    // user gesture, so ask on the first interaction instead of on mount.
+    const ask = () => {
+      requestNotificationPermission();
+      window.removeEventListener("pointerdown", ask);
+    };
+    window.addEventListener("pointerdown", ask, { once: true });
+    return () => window.removeEventListener("pointerdown", ask);
+  }, []);
+
+  useEffect(() => {
+    const update = () => setIsOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
 
   useEffect(() => {
     const close = (e) => {
@@ -1158,17 +1201,6 @@ export function ChatPage() {
   }, [settings]);
 
   useEffect(() => {
-    if (!settings.notificationsEnabled && !settings.soundIncoming) return;
-    if (messages.length <= prevMsgLen.current) { prevMsgLen.current = messages.length; return; }
-    const latest = messages[messages.length - 1];
-    if (!latest || latest.senderId === user?.uid) { prevMsgLen.current = messages.length; return; }
-    if (isInDnd(settings.dndEnabled, settings.dndStart, settings.dndEnd)) { prevMsgLen.current = messages.length; return; }
-    if (settings.notificationsEnabled) sendNotification("New message", latest.content || "Sent an attachment");
-    if (settings.soundIncoming) playSound("incoming");
-    prevMsgLen.current = messages.length;
-  }, [messages, settings, user?.uid]);
-
-  useEffect(() => {
     if (!user) return;
     const unsub = listenToConversations(
       user.uid,
@@ -1177,6 +1209,53 @@ export function ChatPage() {
     );
     return unsub;
   }, [user]);
+
+  // WhatsApp-style message notifications. The conversation list carries the
+  // latest message, so this covers every chat — not only the open one.
+  useEffect(() => {
+    if (!user || !conversations) return;
+
+    if (!convNotifSeededRef.current) {
+      conversations.forEach((conv) => {
+        const key = lastMessageKey(conv);
+        if (key) lastConvNotifRef.current.set(conv.id, key);
+      });
+      convNotifSeededRef.current = true;
+      return;
+    }
+
+    conversations.forEach((conv) => {
+      const lm = conv.lastMessage;
+      if (!lm) return;
+      const key = lastMessageKey(conv);
+      const previous = lastConvNotifRef.current.get(conv.id);
+      lastConvNotifRef.current.set(conv.id, key);
+
+      if (!key || key === previous) return;
+      if (lm.senderId === user.uid) return;
+      if (conv.id === activeConvId) return;
+      if (isInDnd(settings.dndEnabled, settings.dndStart, settings.dndEnd)) return;
+
+      const otherUid = conv.participants?.find((p) => p !== user.uid);
+      const title = conv.type === "group"
+        ? conv.name || "Group"
+        : convNameMap[otherUid] || lm.senderName || "New message";
+      const body = messagePreview(lm);
+
+      if (document.visibilityState === "visible") {
+        setInAppToast({ conversationId: conv.id, title, body });
+        window.setTimeout(() => setInAppToast(null), 5000);
+      } else if (settings.notificationsEnabled) {
+        sendNotification(title, body, {
+          tag: conv.id,
+          conversationId: conv.id,
+          url: `${import.meta.env.BASE_URL}chatroom/`,
+        });
+      }
+
+      if (settings.soundIncoming) playSound("incoming");
+    });
+  }, [conversations, activeConvId, convNameMap, settings, user]);
 
   const fetchedNamesRef = useRef(new Set());
   useEffect(() => {
@@ -1220,21 +1299,28 @@ export function ChatPage() {
   }, [activeConvId, user?.uid]);
 
   const markedConvRef = useRef(null);
+  const [recipientUid, setRecipientUid] = useState(null);
 
   useEffect(() => {
     if (!activeConvId) return;
     setRecipient(null);
+    setRecipientUid(null);
     getConversation(activeConvId).then((conv) => {
       setActiveConv(conv);
       if (conv?.type === "private") {
         const otherUid = conv.participants.find((p) => p !== user.uid);
-        if (otherUid) getUserProfile(otherUid).then(setRecipient);
+        if (otherUid) setRecipientUid(otherUid);
       }
     });
     const unsub = listenToMessages(activeConvId, setMessages);
     markedConvRef.current = null;
     return unsub;
   }, [activeConvId, user.uid]);
+
+  useEffect(() => {
+    if (!recipientUid) return;
+    return listenToUserProfile(recipientUid, setRecipient);
+  }, [recipientUid]);
 
   useEffect(() => {
     if (!activeConvId || !messages.length) return;
@@ -1280,11 +1366,15 @@ export function ChatPage() {
       setUnreadNotifs(list.filter((n) => !n.read).length);
 
       if (!settings.notificationsEnabled) return;
+      if (document.visibilityState !== "hidden") return;
       if (isInDnd(settings.dndEnabled, settings.dndStart, settings.dndEnd)) return;
       list.forEach((n) => {
         if (!n.read && !notifiedNotifsRef.current.has(n.id)) {
           notifiedNotifsRef.current.add(n.id);
-          sendNotification(n.title, n.body);
+          sendNotification(n.title, n.body, {
+            tag: `notif-${n.id}`,
+            url: `${import.meta.env.BASE_URL}chatroom/`,
+          });
         }
       });
     });
@@ -1423,6 +1513,27 @@ export function ChatPage() {
 
   return (
     <div className={`app-window ${(activeConvId || view === "settings") ? "mobile-chat-active" : ""} ${showMobileMenu ? "mobile-menu-open" : ""}`}>
+      {!isOnline && (
+        <div className="connection-banner" role="status">
+          You’re offline — messages will send when your connection returns.
+        </div>
+      )}
+
+      {inAppToast && (
+        <button
+          type="button"
+          className="in-app-toast"
+          onClick={() => {
+            setActiveConvId(inAppToast.conversationId);
+            setView("chats");
+            setInAppToast(null);
+          }}
+        >
+          <span className="in-app-toast-title">{inAppToast.title}</span>
+          <span className="in-app-toast-body">{inAppToast.body}</span>
+        </button>
+      )}
+
       <div className="sidebar">
         <div className="sidebar-avatar-wrapper" onClick={() => { setShowProfile(true); setShowMobileMenu(false); }} title="Edit profile">
           {profile?.avatar ? (
@@ -1705,7 +1816,7 @@ export function ChatPage() {
                         {getAvatarFallback(recipient.displayName)}
                       </div>
                     )}
-                    <div className={`status-dot ${recipient.isOnline ? "status-online" : "status-offline"}`} />
+                    <div className={`status-dot ${isUserOnline(recipient) ? "status-online" : "status-offline"}`} />
                   </div>
                 ) : activeConv?.type === "group" && activeConv.avatar ? (
                   <img className="chat-avatar" src={activeConv.avatar} alt="" style={{ width: 40, height: 40 }} />
@@ -1724,7 +1835,7 @@ export function ChatPage() {
                     ) : activeConv?.type === "group"
                       ? `${activeConv.participants?.length || 0} members`
                       : recipient
-                        ? `@${recipient.username || "user"} \u2022 ${recipient.isOnline ? "online" : "offline"}`
+                        ? `@${recipient.username || "user"} \u2022 ${isUserOnline(recipient) ? "online" : "offline"}`
                         : ""}
                   </div>
                 </div>

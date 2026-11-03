@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { loadSettings, saveSettings, applyTheme, applyStyleOverrides, DEFAULTS } from "@/lib/settingsService";
+import { setUserOnline, setUserOffline } from "@/lib/userService";
 import {
   changePassword,
   hasPasswordProvider,
@@ -42,6 +43,9 @@ function useSettingsState() {
     if (["bubbleStyle", "fontSize", "fontFamily", "wallpaper", "wallpaperUrl"].includes(key)) applyStyleOverrides(next);
     if (key === "presenceVisible") {
       localStorage.setItem("csc_presence_visible", String(value));
+      if (value) setUserOnline(user?.uid);
+      else setUserOffline(user?.uid);
+      window.dispatchEvent(new Event("csc-presence-changed"));
     }
     if (key === "incognito") {
       localStorage.setItem("csc_incognito", String(value));

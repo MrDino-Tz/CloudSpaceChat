@@ -369,23 +369,22 @@ service firebase.storage {
 - **Last Seen**: Show when user was last active
 - **Privacy Controls**: Control who sees your status
 - **Active Now**: Show recently active users
+- **Implementation (shipped)**:
+  - Web: heartbeat (`usePresence`, 45 s) + `visibilitychange` / `focus` / `blur` / `online` / `offline` / `pagehide` handling; `isUserOnline()` treats `isOnline` as live only when `lastSeen` is fresh (< 2 min).
+  - Android: `PresenceManager` (lifecycle + `ConnectivityManager` network callback + 45 s heartbeat) + `UserProfile.onlineNow()` freshness filter in online-user listeners.
+  - Toggle: “Show active status” writes presence state immediately (web local toggle + Firestore write; Android `SettingsViewModel` → `PresenceManager.refresh()`).
 
 ### 8. Notifications
-- **Push Notifications**: Web push notifications
+- **Push Notifications**: Web push notifications (service worker `public/sw.js` + `showNotification()`; safe `Notification` constructor fallback; mobile Chrome requires the SW path and rejects the constructor).
 - **In-App Notifications**:
-  - New messages
-  - Mentions
-  - Group invites
-  - Calls
+  - Web: in-app toast while the tab is focused; system notification only when `document.visibilityState === "hidden"`; per-conversation `tag` dedupe; in-app sound; DND respected.
+  - Android: in-app banner from FCM while foregrounded and/or from the conversation listener; system notification only when backgrounded/closed; active-conversation pushes suppressed.
 - **Notification Settings**:
-  - Enable/disable notifications
-  - Mute conversations
-  - Mute groups
-  - Quiet hours
+  - Source of truth: `settings/{uid}` (web writes it, backend reads it; Android mirrors into `csc_settings` and syncs to Firestore).
+  - Enable/disable notifications; quiet hours (DND window).
 - **Notification Preferences**:
-  - Sound on/off
-  - Vibration on/off
-  - Desktop notifications
+  - Sound on/off; vibration handled by OS; desktop notifications via service worker.
+- **Delivery**: backend (`functions.onMessageCreated` / `onNotificationCreated`) fans out across `fcmTokens` per user (multi-device) and cleans stale tokens.
 
 ### 9. Personalization & Settings
 - **Theme Options**:
