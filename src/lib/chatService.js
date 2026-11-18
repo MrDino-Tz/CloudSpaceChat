@@ -160,6 +160,13 @@ export async function sendMessage(conversationId, senderId, { content, type = "t
   });
 
   return msgRef.id;
+  // Trigger push notification to all subscribed clients
+  triggerMessagePush(conversationId, senderId, content, type);
+  // Trigger push notification to all subscribed clients
+  triggerMessagePush(conversationId, senderId, content, type);
+
+  // Trigger push notification to all subscribed clients
+  triggerMessagePush(conversationId, senderId, content, type);
 }
 
 export function listenToMessages(conversationId, callback) {
